@@ -10,6 +10,7 @@ import com.google.android.material.bottomnavigation.BottomNavigationView
 class MainActivity : AppCompatActivity() {
 
     private val handler = Handler(Looper.getMainLooper())
+    private lateinit var nsdHelper: NsdHelper
 
     private val txRunnable = object : Runnable {
         override fun run() {
@@ -22,6 +23,14 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        // Initialize NSD and start discovery
+        nsdHelper = NsdHelper(this)
+        nsdHelper.startDiscovery { discoveredIp ->
+            runOnUiThread {
+                SocketManager.updateHost(discoveredIp)
+            }
+        }
+
         SocketManager.start()
 
         if (savedInstanceState == null) {
@@ -33,8 +42,7 @@ class MainActivity : AppCompatActivity() {
                 val f: Fragment = when (item.itemId) {
                     R.id.nav_control -> ControlFragment()
                     R.id.nav_gpath -> GPathFragment()
-                    R.id.nav_topic -> TopicFragment()
-                    R.id.nav_node -> NodeFragment()
+                    R.id.nav_log -> LogFragment()
                     else -> ControlFragment()
                 }
                 showFragment(f)
@@ -57,6 +65,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        nsdHelper.stopDiscovery()
         SocketManager.stop()
         handler.removeCallbacks(txRunnable)
     }

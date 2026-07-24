@@ -26,6 +26,20 @@ object SocketManager {
     fun addListener(l: (String) -> Unit) { listeners.add(l) }
     fun removeListener(l: (String) -> Unit) { listeners.remove(l) }
 
+    /** Update the target host and reconnect if necessary. */
+    fun updateHost(newHost: String) {
+        if (Config.HOST == newHost && isStarted && webSocket != null) return
+        
+        Log.i(TAG, "Updating host to $newHost, restarting connection...")
+        AppLogger.log("Socket: Updating host to $newHost")
+        Config.HOST = newHost
+        
+        if (isStarted) {
+            disconnectInternal()
+            connect()
+        }
+    }
+
     /** Start the connection process. */
     fun start() {
         if (isStarted) return
@@ -33,12 +47,19 @@ object SocketManager {
         connect()
     }
 
+    private fun disconnectInternal() {
+        webSocket?.close(1000, "Changing host")
+        webSocket = null
+    }
+
     private fun connect() {
         Log.d(TAG, "Connecting to ${Config.WS_URL}...")
+        AppLogger.log("Socket: Connecting to ${Config.WS_URL}")
         val request = Request.Builder().url(Config.WS_URL).build()
         webSocket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 Log.i(TAG, "WebSocket Connected")
+                AppLogger.log("Socket: Connected")
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
@@ -50,10 +71,12 @@ object SocketManager {
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
                 webSocket.close(1000, null)
                 Log.w(TAG, "WebSocket Closing: $reason")
+                AppLogger.log("Socket: Closing ($reason)")
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 Log.e(TAG, "WebSocket Error: ${t.message}")
+                AppLogger.log("Socket: Error: ${t.message}")
                 // Auto reconnect after 3 seconds
                 handler.postDelayed({ if (isStarted) connect() }, 3000)
             }
