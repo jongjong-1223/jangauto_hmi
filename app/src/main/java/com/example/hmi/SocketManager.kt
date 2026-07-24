@@ -26,13 +26,14 @@ object SocketManager {
     fun addListener(l: (String) -> Unit) { listeners.add(l) }
     fun removeListener(l: (String) -> Unit) { listeners.remove(l) }
 
-    /** Update the target host and reconnect if necessary. */
-    fun updateHost(newHost: String) {
-        if (Config.HOST == newHost && isStarted && webSocket != null) return
+    /** Update the target host and port, and reconnect if necessary. */
+    fun updateHost(newHost: String, newPort: Int) {
+        if (Config.HOST == newHost && Config.PORT == newPort && isStarted && webSocket != null) return
         
-        Log.i(TAG, "Updating host to $newHost, restarting connection...")
-        AppLogger.log("Socket: Updating host to $newHost")
+        Log.i(TAG, "Updating host to $newHost:$newPort, restarting connection...")
+        AppLogger.log("Socket: Updating host to $newHost:$newPort")
         Config.HOST = newHost
+        Config.PORT = newPort
         
         if (isStarted) {
             disconnectInternal()
@@ -77,8 +78,8 @@ object SocketManager {
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 Log.e(TAG, "WebSocket Error: ${t.message}")
                 AppLogger.log("Socket: Error: ${t.message}")
-                // Auto reconnect after 3 seconds
-                handler.postDelayed({ if (isStarted) connect() }, 3000)
+                // Auto reconnect after delay from config
+                handler.postDelayed({ if (isStarted) connect() }, Config.RECONNECT_DELAY_MS)
             }
         })
     }

@@ -18,13 +18,13 @@ class NsdHelper(context: Context) {
     private var multicastLock: WifiManager.MulticastLock? = null
 
     private var discoveryListener: NsdManager.DiscoveryListener? = null
-    private var onRobotFound: ((String) -> Unit)? = null
+    private var onRobotFound: ((String, Int) -> Unit)? = null
 
     /**
      * Start discovering services of type [Config.SERVICE_TYPE].
-     * @param callback Called with the resolved IP address of the first robot found.
+     * @param callback Called with the resolved IP address and port of the first robot found.
      */
-    fun startDiscovery(callback: (String) -> Unit) {
+    fun startDiscovery(callback: (String, Int) -> Unit) {
         onRobotFound = callback
 
         // 1. Acquire MulticastLock to ensure we can receive mDNS packets
@@ -45,7 +45,8 @@ class NsdHelper(context: Context) {
             override fun onServiceFound(service: NsdServiceInfo) {
                 Log.d(tag, "Service found: ${service.serviceName}")
                 AppLogger.log("NSD: Found service ${service.serviceName}")
-                if (service.serviceType == Config.SERVICE_TYPE) {
+                // Using contains to be more robust across Android versions (some add a trailing dot)
+                if (service.serviceType.contains(Config.SERVICE_TYPE)) {
                     Log.d(tag, "Compatible service found, resolving...")
                     AppLogger.log("NSD: Resolving compatible service...")
                     resolveService(service)
@@ -86,11 +87,12 @@ class NsdHelper(context: Context) {
             }
 
             override fun onServiceResolved(serviceInfo: NsdServiceInfo) {
-                Log.i(tag, "Resolve Succeeded. IP: ${serviceInfo.host.hostAddress}")
-                AppLogger.log("NSD: Resolved IP: ${serviceInfo.host.hostAddress}")
+                Log.i(tag, "Resolve Succeeded. IP: ${serviceInfo.host.hostAddress}, Port: ${serviceInfo.port}")
+                AppLogger.log("NSD: Resolved IP: ${serviceInfo.host.hostAddress}, Port: ${serviceInfo.port}")
                 val hostIp = serviceInfo.host.hostAddress
+                val port = serviceInfo.port
                 if (hostIp != null) {
-                    onRobotFound?.invoke(hostIp)
+                    onRobotFound?.invoke(hostIp, port)
                     // We found one, so we can stop discovery to save battery
                     stopDiscovery()
                 }

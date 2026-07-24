@@ -25,9 +25,9 @@ class MainActivity : AppCompatActivity() {
 
         // Initialize NSD and start discovery
         nsdHelper = NsdHelper(this)
-        nsdHelper.startDiscovery { discoveredIp ->
+        nsdHelper.startDiscovery { discoveredIp, discoveredPort ->
             runOnUiThread {
-                SocketManager.updateHost(discoveredIp)
+                SocketManager.updateHost(discoveredIp, discoveredPort)
             }
         }
 
