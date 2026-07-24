@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="HMI - RPi Control"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:paddingBottom="8dp" />
+
+        <Button
+            android:id="@+id/btnPoweroff"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="⏻ POWEROFF (라즈베리파이 종료)"
+            android:backgroundTint="#C62828"
+            android:textColor="#FFFFFF"
+            android:layout_marginBottom="12dp" />
+
+        <TextView
+            android:id="@+id/tvCurrentState"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="State: STOP"
+            android:textSize="18sp"
+            android:paddingBottom="8dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Drive Mode"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:paddingTop="8dp"
+            android:paddingBottom="4dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <Button android:id="@+id/btnStop" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="STOP" />
+            <Button android:id="@+id/btnKey" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="KEY" />
+            <Button android:id="@+id/btnCali" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="CALI" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <Button android:id="@+id/btnAlign" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="ALIGN" />
+            <Button android:id="@+id/btnRun" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="RUN" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Option"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:paddingTop="20dp"
+            android:paddingBottom="4dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <androidx.appcompat.widget.SwitchCompat android:id="@+id/swVideo" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="VIDEO" />
+            <androidx.appcompat.widget.SwitchCompat android:id="@+id/swSafe" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="SAFE" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Speed"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:paddingTop="20dp"
+            android:paddingBottom="4dp" />
+
+        <TextView
+            android:id="@+id/tvCurrentSpeed"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Speed: MEDIUM"
+            android:textSize="16sp"
+            android:paddingBottom="4dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <Button android:id="@+id/btnSlow" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="SLOW" />
+            <Button android:id="@+id/btnMedium" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="MEDIUM" />
+            <Button android:id="@+id/btnFast" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="FAST" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Manual Control"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:paddingTop="20dp"
+            android:paddingBottom="4dp" />
+
+        <Button
+            android:id="@+id/btnFront"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="FRONT" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <Button android:id="@+id/btnLeft" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="ROTATE LEFT" />
+            <Button android:id="@+id/btnBack" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="BACK" />
+            <Button android:id="@+id/btnRight" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="ROTATE RIGHT" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tvLastJson"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="JSON: -"
+            android:textSize="13sp"
+            android:paddingTop="24dp"
+            android:paddingBottom="20dp" />
+    </LinearLayout>
+</ScrollView>

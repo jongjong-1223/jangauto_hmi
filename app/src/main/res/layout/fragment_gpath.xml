@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Global Path 생성"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:paddingBottom="12dp" />
+
+        <com.example.hmi.MapView
+            android:id="@+id/mapView"
+            android:layout_width="match_parent"
+            android:layout_height="320dp"
+            android:background="#FFFFFF" />
+
+        <TextView
+            android:id="@+id/tvGpathStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="waypoints 0"
+            android:textSize="13sp"
+            android:paddingTop="6dp"
+            android:paddingBottom="12dp" />
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Map X 최소" android:gravity="center_vertical" />
+            <EditText android:id="@+id/etMapMinX" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:inputType="numberDecimal|numberSigned" android:text="-10.0" />
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Map X 최대" android:gravity="center_vertical" />
+            <EditText android:id="@+id/etMapMaxX" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:inputType="numberDecimal|numberSigned" android:text="10.0" />
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Map Y 상단" android:gravity="center_vertical" />
+            <EditText android:id="@+id/etMapTopY" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:inputType="numberDecimal|numberSigned" android:text="10.0" />
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Map Y 하단" android:gravity="center_vertical" />
+            <EditText android:id="@+id/etMapBottomY" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:inputType="numberDecimal|numberSigned" android:text="-10.0" />
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Field Y 상단" android:gravity="center_vertical" />
+            <EditText android:id="@+id/etFieldTopY" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:inputType="numberDecimal|numberSigned" android:text="8.0" />
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Field Y 하단" android:gravity="center_vertical" />
+            <EditText android:id="@+id/etFieldBottomY" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:inputType="numberDecimal|numberSigned" android:text="-8.0" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="작물 X 좌표 (공백 구분)"
+            android:paddingTop="8dp" />
+        <EditText
+            android:id="@+id/etCropX"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="text"
+            android:text="-6.6 -3.3 0 3.3 6.6" />
+
+        <Button
+            android:id="@+id/btnGenerate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="경로 생성 / 발행"
+            android:backgroundTint="#1565C0"
+            android:textColor="#FFFFFF"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="20dp" />
+    </LinearLayout>
+</ScrollView>
