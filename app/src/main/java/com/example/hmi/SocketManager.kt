@@ -12,8 +12,23 @@ import java.util.concurrent.TimeUnit
  */
 object SocketManager {
     private const val TAG = "SocketManager"
+    
+    private var localIp: String? = null
+    private var localPort: Int? = null
+
     private val client = OkHttpClient.Builder()
         .readTimeout(0, TimeUnit.MILLISECONDS) // WebSocket needs no timeout
+        .eventListener(object : EventListener() {
+            override fun connectionAcquired(call: Call, connection: Connection) {
+                try {
+                    val socket = connection.socket()
+                    localIp = socket.localAddress.hostAddress
+                    localPort = socket.localPort
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to get local socket info", e)
+                }
+            }
+        })
         .build()
 
     private var webSocket: WebSocket? = null
@@ -54,13 +69,22 @@ object SocketManager {
     }
 
     private fun connect() {
-        Log.d(TAG, "Connecting to ${Config.WS_URL}...")
-        AppLogger.log("Socket: Connecting to ${Config.WS_URL}")
+        val isDefault = Config.HOST == "192.168.4.1" && Config.PORT == 8887
+        if (isDefault) {
+            Log.d(TAG, "Connecting using default settings...")
+            AppLogger.log("Socket: Connecting...")
+        } else {
+            Log.d(TAG, "Connecting to ${Config.WS_URL}...")
+            AppLogger.log("Socket: Connecting to ${Config.WS_URL}")
+        }
+        
         val request = Request.Builder().url(Config.WS_URL).build()
         webSocket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 Log.i(TAG, "WebSocket Connected")
-                AppLogger.log("Socket: Connected")
+                val localInfo = if (localIp != null) "$localIp:$localPort" else "unknown"
+                val remoteInfo = "${Config.HOST}:${Config.PORT}"
+                AppLogger.log("Socket: Connected (Local: $localInfo -> Remote: $remoteInfo)")
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
@@ -77,7 +101,7 @@ object SocketManager {
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 Log.e(TAG, "WebSocket Error: ${t.message}")
-                AppLogger.log("Socket: Error: ${t.message}")
+                AppLogger.log("Socket: Connection failed")
                 // Auto reconnect after delay from config
                 handler.postDelayed({ if (isStarted) connect() }, Config.RECONNECT_DELAY_MS)
             }
