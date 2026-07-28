@@ -35,6 +35,11 @@ object SocketManager {
     private val handler = Handler(Looper.getMainLooper())
     private var isStarted = false
 
+    // State tracking to prevent duplicate logs for periodic messages
+    private var lastLoggedSwBits = -1
+    private var lastLoggedKeyBits = -1
+    private var lastLoggedSpeedBits = -1
+
     // Listeners for incoming data
     private val listeners = mutableSetOf<(String) -> Unit>()
     // Specialized listener for handshake feedback (reason for rejection)
@@ -122,6 +127,8 @@ object SocketManager {
                 val currentMode = json.getString("current_mode")
                 val reason = json.optString("reason", "")
                 
+                AppLogger.rx("Mode Ack: $currentMode (Accepted: $accepted${if (accepted) "" else ", Reason: $reason"})")
+                
                 CommandState.currentMode = currentMode
                 if (!accepted && reason.isNotEmpty()) {
                     feedbackListener?.invoke(reason)
@@ -130,9 +137,17 @@ object SocketManager {
             
             // 2. Handle robot_status
             if (json.has("mode") && json.has("in_error")) {
-                CommandState.currentMode = json.getString("mode")
-                CommandState.inError = json.getBoolean("in_error")
-                CommandState.errorReason = json.optString("error_reason", "")
+                val mode = json.getString("mode")
+                val inError = json.getBoolean("in_error")
+                val reason = json.optString("error_reason", "")
+                
+                if (CommandState.currentMode != mode || CommandState.inError != inError) {
+                    AppLogger.rx("Status Mirror: Mode=$mode, Error=$inError${if (inError) " ($reason)" else ""}")
+                }
+                
+                CommandState.currentMode = mode
+                CommandState.inError = inError
+                CommandState.errorReason = reason
                 
                 if (CommandState.inError && CommandState.errorReason.isNotEmpty()) {
                     feedbackListener?.invoke("Robot Error: ${CommandState.errorReason}")
@@ -143,6 +158,7 @@ object SocketManager {
             if (json.optString("type") == "move_ack") {
                 val accepted = json.optBoolean("accepted", false)
                 val reason = json.optString("reason", "")
+                AppLogger.rx("Move Ack: Accepted=$accepted${if (accepted) "" else ", Reason: $reason"}")
                 if (accepted) {
                     feedbackListener?.invoke("MOVE_SUCCESS")
                 } else {
@@ -156,6 +172,37 @@ object SocketManager {
 
     /** Send a JSON string to the robot. */
     fun send(json: String) {
+        try {
+            val obj = org.json.JSONObject(json)
+            if (obj.has("command")) {
+                // Non-periodic commands (move, poweroff, etc.)
+                AppLogger.tx("Command: ${obj.getString("command")} - $json")
+            } else if (obj.has("sw_bits")) {
+                // Periodic state updates
+                val sw = obj.getInt("sw_bits")
+                val key = obj.getInt("key_bits")
+                val speed = obj.getInt("speed_bits")
+                
+                if (sw != lastLoggedSwBits || key != lastLoggedKeyBits || speed != lastLoggedSpeedBits) {
+                    val modeName = CommandState.bitsToModeName(sw)
+                    val keyDesc = when(key) {
+                        0b1000 -> "FRONT"
+                        0b0100 -> "BACK"
+                        0b0010 -> "LEFT"
+                        0b0001 -> "RIGHT"
+                        else -> "STOP"
+                    }
+                    AppLogger.tx("Update: ReqMode=$modeName, Key=$keyDesc")
+                    lastLoggedSwBits = sw
+                    lastLoggedKeyBits = key
+                    lastLoggedSpeedBits = speed
+                }
+            }
+        } catch (e: Exception) {
+            // Log as raw if parsing fails
+            AppLogger.tx("Raw: $json")
+        }
+        
         webSocket?.send(json) ?: Log.e(TAG, "Cannot send, socket not connected")
     }
 

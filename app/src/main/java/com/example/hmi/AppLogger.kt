@@ -24,6 +24,9 @@ object AppLogger {
         listener?.invoke(getLogs())
     }
 
+    fun tx(msg: String) = log("[TX] -> $msg")
+    fun rx(msg: String) = log("[RX] <- $msg")
+
     /** Set a listener to be notified when logs are updated. */
     fun setListener(l: ((List<String>) -> Unit)?) {
         listener = l
