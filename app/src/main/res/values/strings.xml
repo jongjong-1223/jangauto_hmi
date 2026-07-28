@@ -1,3 +1,7 @@
 <resources>
-    <string name="app_name">HMI</string>
+    <string name="app_name">Jangauto HMI</string>
+    <string name="ping_format">Ping: %1$dms</string>
+    <string name="state_format">State: %1$s</string>
+    <string name="requesting_format">Requesting: %1$s</string>
+    <string name="pos_format">Pos: (%1$.1f, %2$.1f) | Ori: %3$.1f° | Vel: %4$.1f m/s</string>
 </resources>

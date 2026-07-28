@@ -27,9 +27,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="400dp"
                 android:orientation="vertical">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Full Map" android:textSize="12sp" android:textStyle="bold" />
                 <com.example.hmi.MapView android:id="@+id/mapViewFull" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:background="#FFFFFF" android:layout_marginBottom="4dp" />
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Zoomed View" android:textSize="12sp" android:textStyle="bold" />
                 <com.example.hmi.MapView android:id="@+id/mapViewZoom" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:background="#FFFFFF" />
             </LinearLayout>
 

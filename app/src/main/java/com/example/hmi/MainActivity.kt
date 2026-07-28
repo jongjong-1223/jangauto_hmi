@@ -25,6 +25,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        CommandState.reset() // Ensure fresh start
         WindowCompat.setDecorFitsSystemWindows(window, false)
         setContentView(R.layout.activity_main)
 
@@ -60,7 +61,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         SocketManager.setOnPingUpdateListener { ping ->
-            runOnUiThread { tvPing?.text = "Ping: ${ping}ms" }
+            runOnUiThread { tvPing?.text = getString(R.string.ping_format, ping) }
         }
         
         SocketManager.setRobotStatusListener { status ->
@@ -188,7 +189,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        // Stop service when activity is destroyed to ensure cleanup
+        nsdHelperInstance?.stopDiscovery()
+        nsdHelperInstance = null
+        
         val serviceIntent = Intent(this, RobotConnectionService::class.java)
         stopService(serviceIntent)
         CommandState.reset()

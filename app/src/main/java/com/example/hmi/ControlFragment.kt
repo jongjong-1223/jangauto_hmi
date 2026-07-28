@@ -82,9 +82,9 @@ class ControlFragment : Fragment() {
     private fun syncUi() {
         if (!isAdded) return
         val mode = CommandState.currentMode
-        tvCurrentState.text = "State: $mode"
+        tvCurrentState.text = getString(R.string.state_format, mode)
         tvCurrentState.setTextColor(if (CommandState.inError) Color.RED else Color.BLACK)
-        tvRequestedState.text = "Requesting: ${CommandState.bitsToModeName(CommandState.requestedSwBits)}"
+        tvRequestedState.text = getString(R.string.requesting_format, CommandState.bitsToModeName(CommandState.requestedSwBits))
         
         val buttons = mapOf(R.id.btnStop to "STOP", R.id.btnKey to "KEY", R.id.btnCali to "CAL", R.id.btnAlign to "ALIGN", R.id.btnRun to "RUN")
         buttons.forEach { (id, name) ->

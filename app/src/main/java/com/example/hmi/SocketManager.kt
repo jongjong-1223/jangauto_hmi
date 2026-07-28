@@ -89,7 +89,10 @@ object SocketManager {
         pendingRequests.values.forEach { handler.removeCallbacks(it.runnable) }
         pendingRequests.clear()
         
-        AppLogger.log("Socket: Connection stopped and cleaned up")
+        // Reset logging state
+        lastLoggedSwBits = -1
+        lastLoggedKeyBits = -1
+        lastPingMs = -1L
     }
 
     private fun disconnectInternal() { webSocket?.close(1000, "Changing host"); webSocket = null }

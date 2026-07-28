@@ -43,7 +43,7 @@ class GPathFragment : Fragment() {
         val v = status.tagVel?.toFloat() ?: 0f
         mapFull.setRobotState(tag, o, v, h, true)
         mapZoom.setRobotState(tag, o, v, h, true)
-        tvStatus.text = "Pos: ($tx, $ty) | Ori: ${o}° | Vel: $v m/s"
+        tvStatus.text = getString(R.string.pos_format, tx, ty, o, v)
     }
 
     private fun generatePath(view: View) {

@@ -4,7 +4,6 @@ import android.content.Context
 import android.graphics.*
 import android.util.AttributeSet
 import android.view.View
-import kotlin.math.sin
 
 class MapView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyle: Int = 0
@@ -45,6 +44,9 @@ class MapView @JvmOverloads constructor(
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#495057"); textSize = 24f; typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
     }
+
+    private val robotPath = Path()
+    private val trailPath = Path()
 
     fun setMapData(anchors: List<Pt>, walls: List<List<Pt>>, path: List<Pt>) {
         this.anchors = anchors
@@ -88,11 +90,20 @@ class MapView @JvmOverloads constructor(
         fun sy(y: Float) = height - (offY + (y - minY) * scale)
 
         // Draw Path & History
-        val drawLine = { p1: Pt, p2: Pt, paint: Paint -> canvas.drawLine(sx(p1.x), sy(p1.y), sx(p2.x), sy(p2.y), paint) }
+        if (history.size >= 2) {
+            trailPath.reset()
+            trailPath.moveTo(sx(history[0].x), sy(history[0].y))
+            for (i in 1 until history.size) trailPath.lineTo(sx(history[i].x), sy(history[i].y))
+            canvas.drawPath(trailPath, historyPaint)
+        }
         
-        if (history.size >= 2) for (i in 0 until history.size - 1) drawLine(history[i], history[i+1], historyPaint)
-        if (path.size >= 2) for (i in 0 until path.size - 1) drawLine(path[i], path[i+1], pathPaint)
-        for (wall in walls) if (wall.size >= 2) for (i in 0 until wall.size - 1) drawLine(wall[i], wall[i+1], wallPaint)
+        if (path.size >= 2) for (i in 0 until path.size - 1) canvas.drawLine(sx(path[i].x), sy(path[i].y), sx(path[i+1].x), sy(path[i+1].y), pathPaint)
+        
+        for (wall in walls) {
+            if (wall.size < 2) continue
+            for (i in 0 until wall.size - 1) canvas.drawLine(sx(wall[i].x), sy(wall[i].y), sx(wall[i+1].x), sy(wall[i+1].y), wallPaint)
+        }
+
         for ((i, a) in anchors.withIndex()) {
             canvas.drawCircle(sx(a.x), sy(a.y), 6f, anchorPaint)
             canvas.drawText("A${i+1}", sx(a.x) + 12f, sy(a.y) - 12f, textPaint)
@@ -102,8 +113,11 @@ class MapView @JvmOverloads constructor(
         canvas.save()
         val tx = sx(currentTag.x); val ty = sy(currentTag.y)
         canvas.translate(tx, ty); canvas.rotate(-tagOri)
-        val rPath = Path().apply { moveTo(22f, 0f); lineTo(-18f, -16f); lineTo(-18f, 16f); close() }
-        canvas.drawPath(rPath, tagPaint)
+        
+        robotPath.reset()
+        robotPath.moveTo(22f, 0f); robotPath.lineTo(-18f, -16f); robotPath.lineTo(-18f, 16f); robotPath.close()
+        canvas.drawPath(robotPath, tagPaint)
+        
         if (tagVel > 0.05f) canvas.drawLine(0f, 0f, tagVel * 60f, 0f, velPaint)
         canvas.restore()
 
