@@ -2,8 +2,10 @@
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="56dp"
-    android:background="#F5F5F5">
+    android:layout_height="64dp"
+    android:background="@color/surface_card"
+    android:elevation="4dp"
+    android:paddingEnd="8dp">
 
     <ImageButton
         android:id="@+id/btnMenu"
@@ -11,34 +13,23 @@
         android:layout_height="48dp"
         android:src="@android:drawable/ic_menu_sort_by_size"
         android:background="?attr/selectableItemBackgroundBorderless"
+        app:tint="@color/uos_blue"
         android:layout_marginStart="8dp"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
 
     <TextView
-        android:id="@+id/tvHeader"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Jangauto HMI"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toEndOf="@id/btnMenu"
-        android:layout_marginStart="8dp" />
-
-    <TextView
         android:id="@+id/tvPing"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Ping: --ms"
-        android:textSize="12sp"
-        android:textColor="#2E7D32"
+        android:textSize="11sp"
+        android:textColor="@color/accent_green"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@id/btnFullMap"
-        android:layout_marginEnd="8dp" />
+        android:layout_marginEnd="12dp" />
 
     <ImageButton
         android:id="@+id/btnFullMap"
@@ -46,6 +37,7 @@
         android:layout_height="40dp"
         android:src="@android:drawable/ic_menu_mapmode"
         android:background="?attr/selectableItemBackgroundBorderless"
+        app:tint="@color/uos_blue"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@id/btnLogs"
@@ -57,6 +49,7 @@
         android:layout_height="40dp"
         android:src="@android:drawable/ic_menu_info_details"
         android:background="?attr/selectableItemBackgroundBorderless"
+        app:tint="@color/uos_blue"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@id/btnSettings"
@@ -64,11 +57,11 @@
 
     <ImageButton
         android:id="@+id/btnSettings"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
         android:src="@android:drawable/ic_menu_manage"
         android:background="?attr/selectableItemBackgroundBorderless"
-        android:layout_marginEnd="8dp"
+        app:tint="@color/uos_blue"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />

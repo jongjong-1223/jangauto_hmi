@@ -23,25 +23,28 @@ class JoystickView @JvmOverloads constructor(
     private var hatY = 0f
 
     private val basePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.LTGRAY
+        color = Color.parseColor("#E9ECEF")
         style = Paint.Style.FILL
-        alpha = 150
     }
 
     private val hatPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#5E35B1") // Deep Purple
+        color = Color.parseColor("#005EB8") // UOS Blue
         style = Paint.Style.FILL
+        setShadowLayer(10f, 0f, 4f, Color.parseColor("#40000000"))
     }
 
-    // Callback for X, Y movement (-1.0 to 1.0)
     var onMoveListener: ((Float, Float) -> Unit)? = null
+
+    init {
+        setLayerType(LAYER_TYPE_SOFTWARE, null) // Required for shadows on some versions
+    }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         centerX = w / 2f
         centerY = h / 2f
-        baseRadius = min(w, h) / 3f
-        hatRadius = baseRadius / 2.5f
+        baseRadius = min(w, h) / 2.5f
+        hatRadius = baseRadius / 2.2f
         resetHat()
     }
 
@@ -54,15 +57,14 @@ class JoystickView @JvmOverloads constructor(
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        // Draw base
         canvas.drawCircle(centerX, centerY, baseRadius, basePaint)
-        // Draw hat
         canvas.drawCircle(hatX, hatY, hatRadius, hatPaint)
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (event.action == MotionEvent.ACTION_UP || event.action == MotionEvent.ACTION_CANCEL) {
             resetHat()
+            performClick()
             return true
         }
 
@@ -74,7 +76,6 @@ class JoystickView @JvmOverloads constructor(
             hatX = event.x
             hatY = event.y
         } else {
-            // Constraint within base radius
             val ratio = baseRadius / distance
             hatX = centerX + dx * ratio
             hatY = centerY + dy * ratio
@@ -82,11 +83,14 @@ class JoystickView @JvmOverloads constructor(
 
         invalidate()
 
-        // Calculate normalized values (-1.0 to 1.0)
         val normX = (hatX - centerX) / baseRadius
         val normY = (hatY - centerY) / baseRadius
         onMoveListener?.invoke(normX, normY)
 
         return true
+    }
+
+    override fun performClick(): Boolean {
+        return super.performClick()
     }
 }

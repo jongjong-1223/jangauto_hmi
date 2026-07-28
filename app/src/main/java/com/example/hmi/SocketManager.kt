@@ -79,7 +79,19 @@ object SocketManager {
     }
 
     fun start() { if (!isStarted) { isStarted = true; connect() } }
-    fun stop() { isStarted = false; webSocket?.close(1000, "App closed"); webSocket = null }
+    
+    fun stop() {
+        isStarted = false
+        webSocket?.close(1000, "App closed")
+        webSocket = null
+        
+        // Clear all pending retries
+        pendingRequests.values.forEach { handler.removeCallbacks(it.runnable) }
+        pendingRequests.clear()
+        
+        AppLogger.log("Socket: Connection stopped and cleaned up")
+    }
+
     private fun disconnectInternal() { webSocket?.close(1000, "Changing host"); webSocket = null }
 
     private fun connect() {

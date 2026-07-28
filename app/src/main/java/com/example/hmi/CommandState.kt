@@ -35,6 +35,22 @@ object CommandState {
     fun getHistory(): List<MapView.Pt> = synchronized(history) { history.toList() }
     fun clearHistory() = synchronized(history) { history.clear() }
 
+    /**
+     * Resets all shared states to default values.
+     */
+    fun reset() {
+        requestedSwBits = BIT_STOP
+        currentMode = "STOP"
+        keyBits = 0b0000
+        speedBits = 0b010
+        isVideoOn = false
+        isSafeMode = false
+        inError = false
+        errorReason = ""
+        clearHistory()
+        AppLogger.clear()
+    }
+
     fun bitsToModeName(bits: Int): String = when (bits) {
         BIT_STOP -> "STOP"; BIT_KEY -> "KEY"; BIT_CAL -> "CAL"; BIT_ALIGN -> "ALIGN"; BIT_RUN -> "RUN"
         else -> "UNKNOWN"

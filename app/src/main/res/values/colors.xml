@@ -1,5 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="black">#FF000000</color>
+    <color name="black">#FF212529</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- UOS Blue Theme -->
+    <color name="uos_blue">#005EB8</color>
+    <color name="uos_blue_dark">#004094</color>
+    <color name="uos_blue_light">#E3F2FD</color>
+
+    <color name="surface_background">#F8F9FA</color>
+    <color name="surface_card">#FFFFFF</color>
+    <color name="border_gray">#DEE2E6</color>
+    <color name="text_secondary">#6C757D</color>
+
+    <color name="accent_red">#D32F2F</color>
+    <color name="accent_green">#2E7D32</color>
 </resources>

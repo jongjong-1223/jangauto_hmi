@@ -1,11 +1,11 @@
 package com.example.hmi
 
+import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -18,22 +18,10 @@ import com.google.android.material.navigation.NavigationView
 
 class MainActivity : AppCompatActivity() {
 
-    private val handler = Handler(Looper.getMainLooper())
     private lateinit var drawerLayout: DrawerLayout
-    
-    // Shared UI elements in top bar (updated via listeners)
     private var tvPing: TextView? = null
-    
-    // Dialog state for real-time updates
     private var mapFullInDialog: MapView? = null
     private var logContainerInDialog: LinearLayout? = null
-
-    private val txRunnable = object : Runnable {
-        override fun run() {
-            sendCurrentCommand()
-            handler.postDelayed(this, Config.TX_PERIOD_MS)
-        }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,12 +31,7 @@ class MainActivity : AppCompatActivity() {
         drawerLayout = findViewById(R.id.drawerLayout)
         val navView = findViewById<NavigationView>(R.id.navigationView)
 
-        // Handle WindowInsets (Edge-to-Edge)
-        ViewCompat.setOnApplyWindowInsetsListener(drawerLayout) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.updatePadding(top = systemBars.top, bottom = systemBars.bottom)
-            insets
-        }
+        drawerLayout.setPadding(0, 0, 0, 0)
 
         // Initialize NSD
         nsdHelperInstance = nsdHelperInstance ?: NsdHelper(this)
@@ -57,6 +40,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         SocketManager.start()
+        startRobotService()
 
         if (savedInstanceState == null) {
             showFragment(ControlFragment())
@@ -75,7 +59,6 @@ class MainActivity : AppCompatActivity() {
             true
         }
 
-        // Global Listeners for shared UI
         SocketManager.setOnPingUpdateListener { ping ->
             runOnUiThread { tvPing?.text = "Ping: ${ping}ms" }
         }
@@ -112,8 +95,11 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
 
-        handler.postDelayed(txRunnable, Config.TX_PERIOD_MS)
+    private fun startRobotService() {
+        val serviceIntent = Intent(this, RobotConnectionService::class.java)
+        androidx.core.content.ContextCompat.startForegroundService(this, serviceIntent)
     }
 
     private fun showSimpleDialog(title: String, msg: String) {
@@ -124,20 +110,29 @@ class MainActivity : AppCompatActivity() {
         supportFragmentManager.beginTransaction().replace(R.id.fragmentContainer, f).commit()
     }
 
-    private fun sendCurrentCommand() {
-        SocketManager.send(ControlRequest(
-            swBits = CommandState.requestedSwBits,
-            keyBits = CommandState.keyBits,
-            speedBits = CommandState.speedBits,
-            videoBit = if (CommandState.isVideoOn) 1 else 0,
-            safeBit = if (CommandState.isSafeMode) 1 else 0
-        ))
-    }
-
-    // Global Top Bar Setup for Fragments
-    fun setupTopBar(root: View, title: String) {
-        root.findViewById<TextView>(R.id.tvHeader)?.text = title
+    fun setupTopBar(root: View) {
         tvPing = root.findViewById(R.id.tvPing)
+        
+        val topBar = root.findViewById<View>(R.id.topBar)
+        val bottomArea = root.findViewById<View>(R.id.bottomControl) 
+            ?: root.findViewById<View>(R.id.gpathContainer)
+            ?: root.findViewById<View>(R.id.graphContainer)
+
+        ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            topBar?.setPadding(0, systemBars.top, 0, 0)
+            bottomArea?.let { view ->
+                if (view is com.google.android.material.card.MaterialCardView) {
+                    val params = view.layoutParams as ViewGroup.MarginLayoutParams
+                    val originalMargin = (12 * resources.displayMetrics.density).toInt()
+                    params.setMargins(originalMargin, originalMargin, originalMargin, originalMargin + systemBars.bottom)
+                    view.layoutParams = params
+                } else {
+                    view.setPadding(view.paddingLeft, view.paddingTop, view.paddingRight, systemBars.bottom)
+                }
+            }
+            insets
+        }
         
         root.findViewById<View>(R.id.btnMenu).setOnClickListener { drawerLayout.openDrawer(GravityCompat.START) }
         root.findViewById<View>(R.id.btnFullMap).setOnClickListener { showFullMapDialog() }
@@ -149,7 +144,6 @@ class MainActivity : AppCompatActivity() {
         val view = LayoutInflater.from(this).inflate(R.layout.dialog_full_map, null)
         mapFullInDialog = view.findViewById(R.id.mapViewFull)
         mapFullInDialog?.isZoomMode = false
-        
         AlertDialog.Builder(this).setView(view).setOnDismissListener { mapFullInDialog = null }.show()
     }
 
@@ -157,7 +151,6 @@ class MainActivity : AppCompatActivity() {
         val view = LayoutInflater.from(this).inflate(R.layout.dialog_logs, null)
         logContainerInDialog = view.findViewById(R.id.logContainer)
         updateLogDisplay(AppLogger.getLogs())
-        
         AlertDialog.Builder(this).setView(view).setOnDismissListener { logContainerInDialog = null }.show()
     }
 
@@ -176,22 +169,12 @@ class MainActivity : AppCompatActivity() {
     fun showSettingsDialog() {
         val view = LayoutInflater.from(this).inflate(R.layout.dialog_control_settings, null)
         val dialog = AlertDialog.Builder(this).setView(view).create()
-        
-        view.findViewById<Button>(R.id.btnPoweroff).setOnClickListener {
-            confirmPoweroff(); dialog.dismiss()
-        }
-        view.findViewById<SwitchCompat>(R.id.swVideo).apply {
-            isChecked = CommandState.isVideoOn
-            setOnCheckedChangeListener { _, c -> CommandState.isVideoOn = c }
-        }
-        view.findViewById<SwitchCompat>(R.id.swSafe).apply {
-            isChecked = CommandState.isSafeMode
-            setOnCheckedChangeListener { _, c -> CommandState.isSafeMode = c }
-        }
+        view.findViewById<Button>(R.id.btnPoweroff).setOnClickListener { confirmPoweroff(); dialog.dismiss() }
+        view.findViewById<SwitchCompat>(R.id.swVideo).apply { isChecked = CommandState.isVideoOn; setOnCheckedChangeListener { _, c -> CommandState.isVideoOn = c } }
+        view.findViewById<SwitchCompat>(R.id.swSafe).apply { isChecked = CommandState.isSafeMode; setOnCheckedChangeListener { _, c -> CommandState.isSafeMode = c } }
         view.findViewById<Button>(R.id.btnSlow).setOnClickListener { CommandState.speedBits = 0b100 }
         view.findViewById<Button>(R.id.btnMedium).setOnClickListener { CommandState.speedBits = 0b010 }
         view.findViewById<Button>(R.id.btnFast).setOnClickListener { CommandState.speedBits = 0b001 }
-        
         dialog.show()
     }
 
@@ -205,7 +188,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        handler.removeCallbacks(txRunnable)
+        // Stop service when activity is destroyed to ensure cleanup
+        val serviceIntent = Intent(this, RobotConnectionService::class.java)
+        stopService(serviceIntent)
+        CommandState.reset()
     }
 
     companion object {

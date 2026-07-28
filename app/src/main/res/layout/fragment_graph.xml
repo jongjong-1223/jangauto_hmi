@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F5F5F5">
+    android:background="@color/surface_background">
 
     <include
         android:id="@+id/topBar"
@@ -11,6 +11,7 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <LinearLayout
+        android:id="@+id/graphContainer"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:orientation="vertical"
