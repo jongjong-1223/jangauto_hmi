@@ -47,8 +47,17 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="State: STOP"
-            android:textSize="15sp"
+            android:textSize="14sp"
             android:textStyle="bold"
+            android:paddingBottom="2dp" />
+
+        <TextView
+            android:id="@+id/tvRequestedState"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Requesting: STOP"
+            android:textSize="12sp"
+            android:textColor="#757575"
             android:paddingBottom="4dp" />
 
         <ScrollView
@@ -94,30 +103,19 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal">
-            <Button android:id="@+id/btnStop" android:layout_width="0dp" android:layout_height="36dp" android:layout_weight="1" android:text="STOP" android:textSize="10sp" android:padding="0dp" android:layout_margin="2dp" />
-            <Button android:id="@+id/btnKey" android:layout_width="0dp" android:layout_height="36dp" android:layout_weight="1" android:text="KEY" android:textSize="10sp" android:padding="0dp" android:layout_margin="2dp" />
-            <Button android:id="@+id/btnCali" android:layout_width="0dp" android:layout_height="36dp" android:layout_weight="1" android:text="CALI" android:textSize="10sp" android:padding="0dp" android:layout_margin="2dp" />
-            <Button android:id="@+id/btnAlign" android:layout_width="0dp" android:layout_height="36dp" android:layout_weight="1" android:text="ALIGN" android:textSize="10sp" android:padding="0dp" android:layout_margin="2dp" />
-            <Button android:id="@+id/btnRun" android:layout_width="0dp" android:layout_height="36dp" android:layout_weight="1" android:text="RUN" android:textSize="10sp" android:padding="0dp" android:layout_margin="2dp" />
+            <Button android:id="@+id/btnStop" android:layout_width="0dp" android:layout_height="36dp" android:layout_weight="1" android:text="REQ STOP" android:textSize="8sp" android:padding="0dp" android:layout_margin="2dp" />
+            <Button android:id="@+id/btnKey" android:layout_width="0dp" android:layout_height="36dp" android:layout_weight="1" android:text="REQ KEY" android:textSize="8sp" android:padding="0dp" android:layout_margin="2dp" />
+            <Button android:id="@+id/btnCali" android:layout_width="0dp" android:layout_height="36dp" android:layout_weight="1" android:text="REQ CALI" android:textSize="8sp" android:padding="0dp" android:layout_margin="2dp" />
+            <Button android:id="@+id/btnAlign" android:layout_width="0dp" android:layout_height="36dp" android:layout_weight="1" android:text="REQ ALIGN" android:textSize="8sp" android:padding="0dp" android:layout_margin="2dp" />
+            <Button android:id="@+id/btnRun" android:layout_width="0dp" android:layout_height="36dp" android:layout_weight="1" android:text="REQ RUN" android:textSize="8sp" android:padding="0dp" android:layout_margin="2dp" />
         </LinearLayout>
 
-        <!-- Manual Direction Keys -->
-        <GridLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:columnCount="3"
-            android:rowCount="2"
-            android:layout_marginTop="8dp">
-
-            <View android:layout_width="60dp" android:layout_height="0dp" />
-            <Button android:id="@+id/btnFront" android:layout_width="60dp" android:layout_height="48dp" android:text="↑" />
-            <View android:layout_width="60dp" android:layout_height="0dp" />
-
-            <Button android:id="@+id/btnLeft" android:layout_width="60dp" android:layout_height="48dp" android:text="←" />
-            <Button android:id="@+id/btnBack" android:layout_width="60dp" android:layout_height="48dp" android:text="↓" />
-            <Button android:id="@+id/btnRight" android:layout_width="60dp" android:layout_height="48dp" android:text="→" />
-        </GridLayout>
+        <!-- Joystick View -->
+        <com.example.hmi.JoystickView
+            android:id="@+id/joystickView"
+            android:layout_width="match_parent"
+            android:layout_height="140dp"
+            android:layout_marginTop="8dp" />
 
         <TextView
             android:id="@+id/tvLastJson"

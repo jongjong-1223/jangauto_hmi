@@ -3,7 +3,6 @@ package com.example.hmi
 import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
-import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
@@ -19,10 +18,12 @@ import org.json.JSONObject
 class ControlFragment : Fragment() {
 
     private lateinit var tvCurrentState: TextView
+    private lateinit var tvRequestedState: TextView
     private lateinit var tvLastJson: TextView
     private lateinit var logContainer: LinearLayout
     private lateinit var etTargetX: EditText
     private lateinit var etTargetY: EditText
+    private lateinit var joystick: JoystickView
     
     private val socketListener = { _: String ->
         syncUiWithRobotState()
@@ -34,15 +35,17 @@ class ControlFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         tvCurrentState = view.findViewById(R.id.tvCurrentState)
+        tvRequestedState = view.findViewById(R.id.tvRequestedState)
         tvLastJson = view.findViewById(R.id.tvLastJson)
         logContainer = view.findViewById(R.id.logContainer)
         etTargetX = view.findViewById(R.id.etTargetX)
         etTargetY = view.findViewById(R.id.etTargetY)
+        joystick = view.findViewById(R.id.joystickView)
 
         // Settings Dialog
         view.findViewById<View>(R.id.btnSettings).setOnClickListener { showSettingsDialog() }
 
-        // Drive mode buttons
+        // Drive mode buttons (Requests)
         view.findViewById<Button>(R.id.btnStop).setOnClickListener { requestState(CommandState.BIT_STOP) }
         view.findViewById<Button>(R.id.btnKey).setOnClickListener { requestState(CommandState.BIT_KEY) }
         view.findViewById<Button>(R.id.btnCali).setOnClickListener { requestState(CommandState.BIT_CAL) }
@@ -52,13 +55,28 @@ class ControlFragment : Fragment() {
         // Target Move
         view.findViewById<Button>(R.id.btnMove).setOnClickListener { sendMoveCommand() }
 
-        // Manual hold buttons
-        hold(view.findViewById(R.id.btnFront), 0b1000)
-        hold(view.findViewById(R.id.btnBack), 0b0100)
-        hold(view.findViewById(R.id.btnLeft), 0b0010)
-        hold(view.findViewById(R.id.btnRight), 0b0001)
+        // Joystick Control
+        joystick.onMoveListener = { x, y ->
+            updateKeyBitsFromJoystick(x, y)
+        }
 
         syncUiWithRobotState()
+    }
+
+    private fun updateKeyBitsFromJoystick(x: Float, y: Float) {
+        val threshold = 0.3f
+        var bits = 0b0000
+        
+        // Y is inverted in JoystickView (up is negative)
+        if (y < -threshold) bits = bits or 0b1000 // FRONT
+        if (y > threshold)  bits = bits or 0b0100 // BACK
+        if (x < -threshold) bits = bits or 0b0010 // LEFT
+        if (x > threshold)  bits = bits or 0b0001 // RIGHT
+        
+        if (CommandState.keyBits != bits) {
+            CommandState.keyBits = bits
+            refreshJson()
+        }
     }
 
     private fun showSettingsDialog() {
@@ -99,11 +117,12 @@ class ControlFragment : Fragment() {
             put("y", y)
         }
         SocketManager.send(json.toString())
-        toast("Move to ($x, $y) sent")
+        toast("Move to ($x, $y) requested")
     }
 
     private fun requestState(bits: Int) {
         CommandState.requestedSwBits = bits
+        tvRequestedState.text = "Requesting: ${CommandState.bitsToModeName(bits)}"
         refreshJson()
     }
 
@@ -119,6 +138,9 @@ class ControlFragment : Fragment() {
             tvCurrentState.setTextColor(Color.BLACK)
         }
 
+        // Update Requested text to match if it has transitioned
+        tvRequestedState.text = "Requesting: ${CommandState.bitsToModeName(CommandState.requestedSwBits)}"
+
         updateButtonHighlight(R.id.btnStop, mode == "STOP")
         updateButtonHighlight(R.id.btnKey, mode == "KEY")
         updateButtonHighlight(R.id.btnCali, mode == "CAL" || mode == "CALI")
@@ -131,12 +153,12 @@ class ControlFragment : Fragment() {
 
     private fun updateLogDisplay(logs: List<String>) {
         logContainer.removeAllViews()
-        for (log in logs.take(50)) { // Show last 50 for performance
+        for (log in logs.take(50)) {
             val tv = TextView(requireContext()).apply {
                 text = log
                 textSize = 12f
                 setPadding(0, 4, 0, 4)
-                setTextColor(if (log.contains("Error") || log.contains("failed") || log.contains("failed")) Color.RED else Color.BLACK)
+                setTextColor(if (log.contains("Error") || log.contains("failed")) Color.RED else Color.BLACK)
             }
             logContainer.addView(tv)
         }
@@ -163,13 +185,9 @@ class ControlFragment : Fragment() {
         SocketManager.setFeedbackListener { reason ->
             activity?.runOnUiThread {
                 when {
-                    reason == "MOVE_SUCCESS" -> {
-                        AppLogger.log("Move: Command accepted by robot")
-                        toast("이동 명령이 승인되었습니다")
-                    }
+                    reason == "MOVE_SUCCESS" -> toast("이동 명령이 승인되었습니다")
                     reason.startsWith("MOVE_FAILED") -> {
                         val msg = reason.removePrefix("MOVE_FAILED: ")
-                        AppLogger.log("Move: Command rejected - $msg")
                         AlertDialog.Builder(requireContext())
                             .setTitle("이동 거절됨")
                             .setMessage(msg.ifEmpty { "로봇이 이동 명령을 거절했습니다." })
@@ -194,16 +212,6 @@ class ControlFragment : Fragment() {
         SocketManager.removeListener(socketListener)
         SocketManager.setFeedbackListener(null)
         AppLogger.setListener(null)
-    }
-
-    private fun hold(button: Button, active: Int) {
-        button.setOnTouchListener { v, event ->
-            when (event.action) {
-                MotionEvent.ACTION_DOWN -> { CommandState.keyBits = active; refreshJson(); v.performClick(); true }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> { CommandState.keyBits = 0b0000; refreshJson(); true }
-                else -> true
-            }
-        }
     }
 
     private fun confirmPoweroff() {
