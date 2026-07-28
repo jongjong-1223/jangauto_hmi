@@ -5,71 +5,48 @@
     android:layout_height="match_parent"
     android:background="#F5F5F5">
 
-    <!-- Top Bar -->
-    <TextView
-        android:id="@+id/tvHeader"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="HMI Control Center"
-        android:textSize="20sp"
-        android:textStyle="bold"
-        android:layout_margin="16dp"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+    <include
+        android:id="@+id/topBar"
+        layout="@layout/layout_top_bar"
+        app:layout_constraintTop_toTopOf="parent" />
 
-    <ImageButton
-        android:id="@+id/btnSettings"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:src="@android:drawable/ic_menu_manage"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:layout_margin="8dp"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
-
-    <!-- Center Log Area -->
-    <LinearLayout
-        android:id="@+id/logArea"
+    <!-- Center Zoomed Map -->
+    <com.example.hmi.MapView
+        android:id="@+id/mapViewZoom"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:orientation="vertical"
         android:background="#FFFFFF"
-        android:layout_marginTop="8dp"
-        android:layout_marginBottom="8dp"
-        android:padding="12dp"
-        app:layout_constraintTop_toBottomOf="@id/tvHeader"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="4dp"
+        app:layout_constraintTop_toBottomOf="@id/topBar"
         app:layout_constraintBottom_toTopOf="@id/bottomControl"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        app:layout_constraintEnd_toEndOf="parent" />
 
+    <!-- Overlaid State Text -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="#B0FFFFFF"
+        android:padding="6dp"
+        android:layout_margin="12dp"
+        app:layout_constraintTop_toTopOf="@id/mapViewZoom"
+        app:layout_constraintStart_toStartOf="@id/mapViewZoom">
         <TextView
             android:id="@+id/tvCurrentState"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="State: STOP"
             android:textSize="14sp"
-            android:textStyle="bold"
-            android:paddingBottom="2dp" />
-
+            android:textStyle="bold" />
         <TextView
             android:id="@+id/tvRequestedState"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Requesting: STOP"
             android:textSize="12sp"
-            android:textColor="#757575"
-            android:paddingBottom="4dp" />
-
-        <ScrollView
-            android:id="@+id/scrollLog"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent">
-            <LinearLayout
-                android:id="@+id/logContainer"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical" />
-        </ScrollView>
+            android:textColor="#555555" />
     </LinearLayout>
 
     <!-- Bottom Control Area -->
@@ -78,7 +55,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="12dp"
+        android:padding="8dp"
         android:background="#EEEEEE"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -90,12 +67,12 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:paddingBottom="8dp">
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="MOVE(m) X:" android:textSize="12sp" />
-            <EditText android:id="@+id/etTargetX" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:inputType="numberDecimal|numberSigned" android:hint="0.0" android:textSize="14sp" />
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Y:" android:textSize="12sp" android:layout_marginStart="8dp" />
-            <EditText android:id="@+id/etTargetY" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:inputType="numberDecimal|numberSigned" android:hint="0.0" android:textSize="14sp" />
-            <Button android:id="@+id/btnMove" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="MOVE" android:layout_marginStart="8dp" />
+            android:paddingBottom="4dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="MOVE(m) X:" android:textSize="11sp" />
+            <EditText android:id="@+id/etTargetX" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:inputType="numberDecimal|numberSigned" android:hint="0.0" android:textSize="12sp" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Y:" android:textSize="11sp" android:layout_marginStart="4dp" />
+            <EditText android:id="@+id/etTargetY" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:inputType="numberDecimal|numberSigned" android:hint="0.0" android:textSize="12sp" />
+            <Button android:id="@+id/btnMove" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="MOVE" android:textSize="12sp" android:layout_marginStart="4dp" />
         </LinearLayout>
 
         <!-- Mode Selection -->
@@ -103,28 +80,19 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal">
-            <Button android:id="@+id/btnStop" android:layout_width="0dp" android:layout_height="36dp" android:layout_weight="1" android:text="REQ STOP" android:textSize="8sp" android:padding="0dp" android:layout_margin="2dp" />
-            <Button android:id="@+id/btnKey" android:layout_width="0dp" android:layout_height="36dp" android:layout_weight="1" android:text="REQ KEY" android:textSize="8sp" android:padding="0dp" android:layout_margin="2dp" />
-            <Button android:id="@+id/btnCali" android:layout_width="0dp" android:layout_height="36dp" android:layout_weight="1" android:text="REQ CALI" android:textSize="8sp" android:padding="0dp" android:layout_margin="2dp" />
-            <Button android:id="@+id/btnAlign" android:layout_width="0dp" android:layout_height="36dp" android:layout_weight="1" android:text="REQ ALIGN" android:textSize="8sp" android:padding="0dp" android:layout_margin="2dp" />
-            <Button android:id="@+id/btnRun" android:layout_width="0dp" android:layout_height="36dp" android:layout_weight="1" android:text="REQ RUN" android:textSize="8sp" android:padding="0dp" android:layout_margin="2dp" />
+            <Button android:id="@+id/btnStop" android:layout_width="0dp" android:layout_height="32dp" android:layout_weight="1" android:text="REQ STOP" android:textSize="8sp" android:padding="0dp" android:layout_margin="1dp" />
+            <Button android:id="@+id/btnKey" android:layout_width="0dp" android:layout_height="32dp" android:layout_weight="1" android:text="REQ KEY" android:textSize="8sp" android:padding="0dp" android:layout_margin="1dp" />
+            <Button android:id="@+id/btnCali" android:layout_width="0dp" android:layout_height="32dp" android:layout_weight="1" android:text="REQ CALI" android:textSize="8sp" android:padding="0dp" android:layout_margin="1dp" />
+            <Button android:id="@+id/btnAlign" android:layout_width="0dp" android:layout_height="32dp" android:layout_weight="1" android:text="REQ ALIGN" android:textSize="8sp" android:padding="0dp" android:layout_margin="1dp" />
+            <Button android:id="@+id/btnRun" android:layout_width="0dp" android:layout_height="32dp" android:layout_weight="1" android:text="REQ RUN" android:textSize="8sp" android:padding="0dp" android:layout_margin="1dp" />
         </LinearLayout>
 
         <!-- Joystick View -->
         <com.example.hmi.JoystickView
             android:id="@+id/joystickView"
             android:layout_width="match_parent"
-            android:layout_height="140dp"
-            android:layout_marginTop="8dp" />
-
-        <TextView
-            android:id="@+id/tvLastJson"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="JSON: -"
-            android:textSize="10sp"
-            android:gravity="center"
-            android:paddingTop="4dp" />
+            android:layout_height="120dp"
+            android:layout_marginTop="4dp" />
 
     </LinearLayout>
 

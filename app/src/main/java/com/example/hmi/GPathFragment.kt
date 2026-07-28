@@ -4,93 +4,71 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
-import android.widget.EditText
-import android.widget.TextView
-import android.widget.Toast
+import android.widget.*
 import androidx.fragment.app.Fragment
-import org.json.JSONObject
+import com.example.hmi.model.*
 
 class GPathFragment : Fragment() {
 
-    private lateinit var map: MapView
+    private lateinit var mapFull: MapView
+    private lateinit var mapZoom: MapView
     private lateinit var tvStatus: TextView
 
-    private val socketListener = { text: String ->
-        if (text.contains("\"anchors\"") || text.contains("\"global_path\"")) {
-            parseAndDraw(text)
-        }
+    private val statusListener: (RobotStatus) -> Unit = { status ->
+        activity?.runOnUiThread { updateFromStatus(status) }
     }
 
-    override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
-    ): View = inflater.inflate(R.layout.fragment_gpath, container, false)
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+        val view = inflater.inflate(R.layout.fragment_gpath, container, false)
+        (activity as? MainActivity)?.setupTopBar(view, "GPath Center")
+        return view
+    }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        map = view.findViewById(R.id.mapView)
+        mapFull = view.findViewById(R.id.mapViewFull)
+        mapZoom = view.findViewById(R.id.mapViewZoom)
         tvStatus = view.findViewById(R.id.tvGpathStatus)
+        mapFull.isZoomMode = false
+        mapZoom.isZoomMode = true
 
-        view.findViewById<Button>(R.id.btnGenerate).setOnClickListener {
-            generatePath(view)
-        }
+        view.findViewById<Button>(R.id.btnGenerate).setOnClickListener { generatePath(view) }
     }
 
-    private fun txt(view: View, id: Int) =
-        view.findViewById<EditText>(id).text.toString().trim()
+    private fun updateFromStatus(status: RobotStatus) {
+        val tx = status.tagX?.toFloat() ?: return
+        val ty = status.tagY?.toFloat() ?: return
+        val tag = MapView.Pt(tx, ty)
+        val h = CommandState.getHistory()
+        val o = status.tagOri?.toFloat() ?: 0f
+        val v = status.tagVel?.toFloat() ?: 0f
+        mapFull.setRobotState(tag, o, v, h, true)
+        mapZoom.setRobotState(tag, o, v, h, true)
+        tvStatus.text = "Pos: ($tx, $ty) | Ori: ${o}° | Vel: $v m/s"
+    }
 
     private fun generatePath(view: View) {
-        val body = JSONObject().apply {
-            put("command", "generate_path")
-            put("map_min_x", txt(view, R.id.etMapMinX))
-            put("map_max_x", txt(view, R.id.etMapMaxX))
-            put("map_top_y", txt(view, R.id.etMapTopY))
-            put("map_bottom_y", txt(view, R.id.etMapBottomY))
-            put("field_top_y", txt(view, R.id.etFieldTopY))
-            put("field_bottom_y", txt(view, R.id.etFieldBottomY))
-            put("crop_x", txt(view, R.id.etCropX))
-        }.toString()
-
-        SocketManager.send(body)
-        Toast.makeText(requireContext(), "경로 생성 요청 전송됨", Toast.LENGTH_SHORT).show()
-    }
-
-    private fun parseAndDraw(body: String) {
-        try {
-            val o = JSONObject(body)
-            val anchorsArr = o.optJSONArray("anchors")
-            val anchors = ArrayList<MapView.Pt>()
-            if (anchorsArr != null) for (i in 0 until anchorsArr.length()) {
-                val a = anchorsArr.getJSONObject(i)
-                anchors.add(MapView.Pt(a.optDouble("x").toFloat(), a.optDouble("y").toFloat()))
-            }
-
-            val pathArr = o.optJSONArray("global_path")
-            val path = ArrayList<MapView.Pt>()
-            if (pathArr != null) for (i in 0 until pathArr.length()) {
-                val p = pathArr.getJSONArray(i)
-                path.add(MapView.Pt(p.getDouble(0).toFloat(), p.getDouble(1).toFloat()))
-            }
-
-            val tagObj = o.optJSONObject("tag")
-            val hasTag = o.optInt("stop_flag", 1) == 0 && tagObj != null
-            val tag = tagObj?.let { MapView.Pt(it.optDouble("x").toFloat(), it.optDouble("y").toFloat()) }
-
-            map.setData(anchors, path, tag, hasTag)
-            val vel = o.optDouble("tag_vel", 0.0)
-            val ori = o.optDouble("tag_ori", 0.0)
-            tvStatus.text = "waypoints ${path.size} · vel ${"%.2f".format(vel)} · ori ${"%.1f".format(ori)}°"
-        } catch (e: Exception) {
-            tvStatus.text = "파싱 오류: ${e.message}"
-        }
+        fun txt(id: Int) = view.findViewById<EditText>(id).text.toString().trim()
+        SocketManager.send(GeneratePathRequest(
+            msgId = SocketManager.generateId(), mapMinX = txt(R.id.etMapMinX), mapMaxX = txt(R.id.etMapMaxX),
+            mapTopY = txt(R.id.etMapTopY), mapBottomY = txt(R.id.etMapBottomY),
+            fieldTopY = txt(R.id.etFieldTopY), fieldBottomY = txt(R.id.etFieldBottomY), cropX = txt(R.id.etCropX)
+        ))
+        Toast.makeText(requireContext(), "Requested", Toast.LENGTH_SHORT).show()
     }
 
     override fun onResume() {
         super.onResume()
-        SocketManager.addListener(socketListener)
+        SocketManager.setRobotStatusListener(statusListener)
+        SocketManager.setMapDataListener { data ->
+            val a = data.anchors?.map { MapView.Pt(it.x.toFloat(), it.y.toFloat()) } ?: emptyList()
+            val w = data.walls?.map { wall -> wall.map { MapView.Pt(it.x.toFloat(), it.y.toFloat()) } } ?: emptyList()
+            mapFull.setMapData(a, w, emptyList()); mapZoom.setMapData(a, w, emptyList())
+        }
     }
 
     override fun onPause() {
         super.onPause()
-        SocketManager.removeListener(socketListener)
+        SocketManager.setRobotStatusListener(null)
+        SocketManager.setMapDataListener(null)
     }
 }

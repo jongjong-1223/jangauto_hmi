@@ -5,236 +5,111 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
-import android.widget.EditText
-import android.widget.LinearLayout
-import android.widget.TextView
-import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.widget.SwitchCompat
+import android.widget.*
 import androidx.fragment.app.Fragment
-import org.json.JSONObject
+import com.example.hmi.model.*
 
 class ControlFragment : Fragment() {
 
     private lateinit var tvCurrentState: TextView
     private lateinit var tvRequestedState: TextView
-    private lateinit var tvLastJson: TextView
-    private lateinit var logContainer: LinearLayout
     private lateinit var etTargetX: EditText
     private lateinit var etTargetY: EditText
+    private lateinit var mapZoom: MapView
     private lateinit var joystick: JoystickView
-    
-    private val socketListener = { _: String ->
-        syncUiWithRobotState()
+
+    private val statusListener: (RobotStatus) -> Unit = { status ->
+        activity?.runOnUiThread { updateFromStatus(status) }
     }
 
-    override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
-    ): View = inflater.inflate(R.layout.fragment_control, container, false)
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+        val view = inflater.inflate(R.layout.fragment_control, container, false)
+        (activity as? MainActivity)?.setupTopBar(view, "Control Center")
+        return view
+    }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         tvCurrentState = view.findViewById(R.id.tvCurrentState)
         tvRequestedState = view.findViewById(R.id.tvRequestedState)
-        tvLastJson = view.findViewById(R.id.tvLastJson)
-        logContainer = view.findViewById(R.id.logContainer)
         etTargetX = view.findViewById(R.id.etTargetX)
         etTargetY = view.findViewById(R.id.etTargetY)
+        mapZoom = view.findViewById(R.id.mapViewZoom)
         joystick = view.findViewById(R.id.joystickView)
 
-        // Settings Dialog
-        view.findViewById<View>(R.id.btnSettings).setOnClickListener { showSettingsDialog() }
+        mapZoom.isZoomMode = true
 
-        // Drive mode buttons (Requests)
         view.findViewById<Button>(R.id.btnStop).setOnClickListener { requestState(CommandState.BIT_STOP) }
         view.findViewById<Button>(R.id.btnKey).setOnClickListener { requestState(CommandState.BIT_KEY) }
         view.findViewById<Button>(R.id.btnCali).setOnClickListener { requestState(CommandState.BIT_CAL) }
         view.findViewById<Button>(R.id.btnAlign).setOnClickListener { requestState(CommandState.BIT_ALIGN) }
         view.findViewById<Button>(R.id.btnRun).setOnClickListener { requestState(CommandState.BIT_RUN) }
-
-        // Target Move
         view.findViewById<Button>(R.id.btnMove).setOnClickListener { sendMoveCommand() }
 
-        // Joystick Control
-        joystick.onMoveListener = { x, y ->
-            updateKeyBitsFromJoystick(x, y)
-        }
+        joystick.onMoveListener = { x, y -> updateKeyBitsFromJoystick(x, y) }
+        syncUi()
+    }
 
-        syncUiWithRobotState()
+    private fun updateFromStatus(status: RobotStatus) {
+        val tx = status.tagX?.toFloat() ?: return
+        val ty = status.tagY?.toFloat() ?: return
+        val tag = MapView.Pt(tx, ty)
+        mapZoom.setRobotState(tag, status.tagOri?.toFloat() ?: 0f, status.tagVel?.toFloat() ?: 0f, CommandState.getHistory(), true)
+        syncUi()
     }
 
     private fun updateKeyBitsFromJoystick(x: Float, y: Float) {
         val threshold = 0.3f
         var bits = 0b0000
-        
-        val absX = if (x < 0) -x else x
-        val absY = if (y < 0) -y else y
-        
-        if (absX > threshold || absY > threshold) {
-            if (absY >= absX) {
-                // Dominant vertical movement
-                if (y < 0) bits = 0b1000 // FRONT
-                else bits = 0b0100       // BACK
-            } else {
-                // Dominant horizontal movement
-                if (x < 0) bits = 0b0010 // LEFT
-                else bits = 0b0001       // RIGHT
-            }
+        val ax = Math.abs(x); val ay = Math.abs(y)
+        if (ax > threshold || ay > threshold) {
+            if (ay >= ax) bits = if (y < 0) 0b1000 else 0b0100
+            else bits = if (x < 0) 0b0010 else 0b0001
         }
-        
-        if (CommandState.keyBits != bits) {
-            CommandState.keyBits = bits
-            refreshJson()
-        }
+        CommandState.keyBits = bits
     }
 
-    private fun showSettingsDialog() {
-        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_control_settings, null)
-        val dialog = AlertDialog.Builder(requireContext())
-            .setView(dialogView)
-            .create()
-
-        dialogView.findViewById<Button>(R.id.btnPoweroff).setOnClickListener { 
-            confirmPoweroff()
-            dialog.dismiss()
-        }
-
-        // Switches
-        dialogView.findViewById<SwitchCompat>(R.id.swVideo).apply {
-            isChecked = CommandState.isVideoOn
-            setOnCheckedChangeListener { _, c -> CommandState.isVideoOn = c; refreshJson() }
-        }
-        dialogView.findViewById<SwitchCompat>(R.id.swSafe).apply {
-            isChecked = CommandState.isSafeMode
-            setOnCheckedChangeListener { _, c -> CommandState.isSafeMode = c; refreshJson() }
-        }
-
-        // Speed buttons
-        dialogView.findViewById<Button>(R.id.btnSlow).setOnClickListener { CommandState.speedBits = 0b100; refreshJson() }
-        dialogView.findViewById<Button>(R.id.btnMedium).setOnClickListener { CommandState.speedBits = 0b010; refreshJson() }
-        dialogView.findViewById<Button>(R.id.btnFast).setOnClickListener { CommandState.speedBits = 0b001; refreshJson() }
-
-        dialog.show()
+    private fun requestState(bits: Int) {
+        CommandState.requestedSwBits = bits
+        syncUi()
     }
 
     private fun sendMoveCommand() {
         val x = etTargetX.text.toString().toDoubleOrNull() ?: 0.0
         val y = etTargetY.text.toString().toDoubleOrNull() ?: 0.0
-        val json = JSONObject().apply {
-            put("command", "move")
-            put("x", x)
-            put("y", y)
-        }
-        SocketManager.send(json.toString())
-        toast("Move to ($x, $y) requested")
+        SocketManager.send(MoveRequest(msgId = SocketManager.generateId(), x = x, y = y))
     }
 
-    private fun requestState(bits: Int) {
-        CommandState.requestedSwBits = bits
-        tvRequestedState.text = "Requesting: ${CommandState.bitsToModeName(bits)}"
-        refreshJson()
-    }
-
-    private fun syncUiWithRobotState() {
+    private fun syncUi() {
         if (!isAdded) return
         val mode = CommandState.currentMode
-        
         tvCurrentState.text = "State: $mode"
-        if (CommandState.inError) {
-            tvCurrentState.setTextColor(Color.RED)
-            tvCurrentState.text = "State: $mode (ERROR: ${CommandState.errorReason})"
-        } else {
-            tvCurrentState.setTextColor(Color.BLACK)
-        }
-
-        // Update Requested text to match if it has transitioned
+        tvCurrentState.setTextColor(if (CommandState.inError) Color.RED else Color.BLACK)
         tvRequestedState.text = "Requesting: ${CommandState.bitsToModeName(CommandState.requestedSwBits)}"
-
-        updateButtonHighlight(R.id.btnStop, mode == "STOP")
-        updateButtonHighlight(R.id.btnKey, mode == "KEY")
-        updateButtonHighlight(R.id.btnCali, mode == "CAL" || mode == "CALI")
-        updateButtonHighlight(R.id.btnAlign, mode == "ALIGN")
-        updateButtonHighlight(R.id.btnRun, mode == "RUN")
-
-        updateLogDisplay(AppLogger.getLogs())
-        refreshJson()
-    }
-
-    private fun updateLogDisplay(logs: List<String>) {
-        logContainer.removeAllViews()
-        for (log in logs.take(50)) {
-            val tv = TextView(requireContext()).apply {
-                text = log
-                textSize = 12f
-                setPadding(0, 4, 0, 4)
-                setTextColor(if (log.contains("Error") || log.contains("failed")) Color.RED else Color.BLACK)
-            }
-            logContainer.addView(tv)
-        }
-    }
-
-    private fun updateButtonHighlight(id: Int, isActive: Boolean) {
-        view?.findViewById<Button>(id)?.apply {
-            if (isActive) {
-                setBackgroundColor(Color.parseColor("#4CAF50"))
-                setTextColor(Color.WHITE)
-            } else {
-                setBackgroundColor(Color.parseColor("#E0E0E0"))
-                setTextColor(Color.BLACK)
+        
+        val buttons = mapOf(R.id.btnStop to "STOP", R.id.btnKey to "KEY", R.id.btnCali to "CAL", R.id.btnAlign to "ALIGN", R.id.btnRun to "RUN")
+        buttons.forEach { (id, name) ->
+            view?.findViewById<Button>(id)?.apply {
+                val active = (mode == name || (name == "CAL" && mode == "CALI"))
+                setBackgroundColor(if (active) Color.parseColor("#4CAF50") else Color.parseColor("#E0E0E0"))
+                setTextColor(if (active) Color.WHITE else Color.BLACK)
             }
         }
     }
 
     override fun onResume() {
         super.onResume()
-        SocketManager.addListener(socketListener)
-        AppLogger.setListener { logs ->
-            activity?.runOnUiThread { updateLogDisplay(logs) }
+        SocketManager.setRobotStatusListener(statusListener)
+        SocketManager.setMapDataListener { data ->
+            val anchors = data.anchors?.map { MapView.Pt(it.x.toFloat(), it.y.toFloat()) } ?: emptyList()
+            val walls = data.walls?.map { wall -> wall.map { MapView.Pt(it.x.toFloat(), it.y.toFloat()) } } ?: emptyList()
+            mapZoom.setMapData(anchors, walls, emptyList())
         }
-        SocketManager.setFeedbackListener { reason ->
-            activity?.runOnUiThread {
-                when {
-                    reason == "MOVE_SUCCESS" -> toast("이동 명령이 승인되었습니다")
-                    reason.startsWith("MOVE_FAILED") -> {
-                        val msg = reason.removePrefix("MOVE_FAILED: ")
-                        AlertDialog.Builder(requireContext())
-                            .setTitle("이동 거절됨")
-                            .setMessage(msg.ifEmpty { "로봇이 이동 명령을 거절했습니다." })
-                            .setPositiveButton("확인", null)
-                            .show()
-                    }
-                    else -> {
-                        AlertDialog.Builder(requireContext())
-                            .setTitle("명령 거절됨")
-                            .setMessage(reason)
-                            .setPositiveButton("확인", null)
-                            .show()
-                    }
-                }
-            }
-        }
-        syncUiWithRobotState()
+        syncUi()
     }
 
     override fun onPause() {
         super.onPause()
-        SocketManager.removeListener(socketListener)
-        SocketManager.setFeedbackListener(null)
-        AppLogger.setListener(null)
+        SocketManager.setRobotStatusListener(null)
+        SocketManager.setMapDataListener(null)
     }
-
-    private fun confirmPoweroff() {
-        AlertDialog.Builder(requireContext())
-            .setTitle("라즈베리파이 종료")
-            .setMessage("정말 종료할까요?")
-            .setPositiveButton("종료") { _, _ ->
-                SocketManager.send("{\"command\": \"poweroff\"}")
-                toast("종료 명령 전송됨")
-            }
-            .setNegativeButton("취소", null)
-            .show()
-    }
-
-    private fun refreshJson() { tvLastJson.text = "JSON: ${CommandState.makeJson()}" }
-    private fun toast(m: String) = Toast.makeText(requireContext(), m, Toast.LENGTH_SHORT).show()
 }

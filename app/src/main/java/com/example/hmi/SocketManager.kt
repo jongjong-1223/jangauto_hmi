@@ -3,22 +3,27 @@ package com.example.hmi
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import com.example.hmi.model.*
+import com.google.gson.Gson
 import okhttp3.*
+import java.util.*
 import java.util.concurrent.TimeUnit
 
 /**
- * Singleton manager for WebSocket communication.
- * Handles connection, automatic reconnection, and data distribution.
+ * Advanced Singleton manager for WebSocket communication.
+ * Features: Structured Data (Gson), Retry Mechanism, Latency Monitoring, Hybrid Ack.
  */
 object SocketManager {
     private const val TAG = "SocketManager"
+    private val gson = Gson()
+    private val handler = Handler(Looper.getMainLooper())
     
-    private var localIp: String? = null
-    private var localPort: Int? = null
+    @Volatile private var localIp: String? = null
+    @Volatile private var localPort: Int? = null
 
     private val client = OkHttpClient.Builder()
-        .readTimeout(0, TimeUnit.MILLISECONDS) // WebSocket needs no timeout
-        .eventListener(object : EventListener() {
+        .readTimeout(0, TimeUnit.MILLISECONDS)
+        .eventListener(object : okhttp3.EventListener() {
             override fun connectionAcquired(call: Call, connection: Connection) {
                 try {
                     val socket = connection.socket()
@@ -32,86 +37,71 @@ object SocketManager {
         .build()
 
     private var webSocket: WebSocket? = null
-    private val handler = Handler(Looper.getMainLooper())
     private var isStarted = false
 
-    // State tracking to prevent duplicate logs for periodic messages
+    // Monitoring
+    private var lastPingMs = -1L
+    private var onPingUpdateListener: ((Long) -> Unit)? = null
+
+    // State tracking for logs
     private var lastLoggedSwBits = -1
     private var lastLoggedKeyBits = -1
-    private var lastLoggedSpeedBits = -1
 
-    // Listeners for incoming data
-    private val listeners = mutableSetOf<(String) -> Unit>()
-    // Specialized listener for handshake feedback (reason for rejection)
+    // Retry Mechanism
+    private val pendingRequests = mutableMapOf<String, PendingRequest>()
+    private const val MAX_RETRIES = 3
+    private const val RETRY_TIMEOUT_MS = 1000L
+
+    data class PendingRequest(
+        val msgId: String,
+        val json: String,
+        val command: String,
+        var retryCount: Int = 0,
+        val runnable: Runnable
+    )
+
+    // Listeners
     private var feedbackListener: ((String) -> Unit)? = null
+    private var mapDataListener: ((MapData) -> Unit)? = null
+    private var robotStatusListener: ((RobotStatus) -> Unit)? = null
 
-    fun addListener(l: (String) -> Unit) { listeners.add(l) }
-    fun removeListener(l: (String) -> Unit) { listeners.remove(l) }
     fun setFeedbackListener(l: ((String) -> Unit)?) { feedbackListener = l }
+    fun setOnPingUpdateListener(l: ((Long) -> Unit)?) { onPingUpdateListener = l }
+    fun setMapDataListener(l: ((MapData) -> Unit)?) { mapDataListener = l }
+    fun setRobotStatusListener(l: ((RobotStatus) -> Unit)?) { robotStatusListener = l }
 
-    /** Update the target host and port, and reconnect if necessary. */
     fun updateHost(newHost: String, newPort: Int) {
         if (Config.HOST == newHost && Config.PORT == newPort && isStarted && webSocket != null) return
-        
-        Log.i(TAG, "Updating host to $newHost:$newPort, restarting connection...")
         AppLogger.log("Socket: Updating host to $newHost:$newPort")
         Config.HOST = newHost
         Config.PORT = newPort
-        
-        if (isStarted) {
-            disconnectInternal()
-            connect()
-        }
+        if (isStarted) { disconnectInternal(); connect() }
     }
 
-    /** Start the connection process. */
-    fun start() {
-        if (isStarted) return
-        isStarted = true
-        connect()
-    }
-
-    private fun disconnectInternal() {
-        webSocket?.close(1000, "Changing host")
-        webSocket = null
-    }
+    fun start() { if (!isStarted) { isStarted = true; connect() } }
+    fun stop() { isStarted = false; webSocket?.close(1000, "App closed"); webSocket = null }
+    private fun disconnectInternal() { webSocket?.close(1000, "Changing host"); webSocket = null }
 
     private fun connect() {
-        val isDefault = Config.HOST == "192.168.4.1" && Config.PORT == 8887
-        if (isDefault) {
-            Log.d(TAG, "Connecting using default settings...")
-            AppLogger.log("Socket: Connecting...")
-        } else {
-            Log.d(TAG, "Connecting to ${Config.WS_URL}...")
-            AppLogger.log("Socket: Connecting to ${Config.WS_URL}")
-        }
-        
         val request = Request.Builder().url(Config.WS_URL).build()
         webSocket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
-                Log.i(TAG, "WebSocket Connected")
                 val localInfo = if (localIp != null) "$localIp:$localPort" else "unknown"
-                val remoteInfo = "${Config.HOST}:${Config.PORT}"
-                AppLogger.log("Socket: Connected (Local: $localInfo -> Remote: $remoteInfo)")
+                AppLogger.log("Socket: Connected (Local: $localInfo -> Remote: ${Config.HOST}:${Config.PORT})")
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
                 handler.post {
                     processRobotMessage(text)
-                    listeners.forEach { it(text) }
                 }
             }
 
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-                webSocket.close(1000, null)
-                Log.w(TAG, "WebSocket Closing: $reason")
                 AppLogger.log("Socket: Closing ($reason)")
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                Log.e(TAG, "WebSocket Error: ${t.message}")
                 AppLogger.log("Socket: Connection failed")
-                // Auto reconnect after delay from config
                 handler.postDelayed({ if (isStarted) connect() }, Config.RECONNECT_DELAY_MS)
             }
         })
@@ -120,96 +110,132 @@ object SocketManager {
     private fun processRobotMessage(text: String) {
         try {
             val json = org.json.JSONObject(text)
-            
-            // 1. Handle control_state_ack
-            if (json.has("requested_mode") && json.has("accepted")) {
-                val accepted = json.getBoolean("accepted")
-                val currentMode = json.getString("current_mode")
-                val reason = json.optString("reason", "")
-                
-                AppLogger.rx("Mode Ack: $currentMode (Accepted: $accepted${if (accepted) "" else ", Reason: $reason"})")
-                
-                CommandState.currentMode = currentMode
-                if (!accepted && reason.isNotEmpty()) {
-                    feedbackListener?.invoke(reason)
-                }
-            }
-            
-            // 2. Handle robot_status
-            if (json.has("mode") && json.has("in_error")) {
-                val mode = json.getString("mode")
-                val inError = json.getBoolean("in_error")
-                val reason = json.optString("error_reason", "")
-                
-                if (CommandState.currentMode != mode || CommandState.inError != inError) {
-                    AppLogger.rx("Status Mirror: Mode=$mode, Error=$inError${if (inError) " ($reason)" else ""}")
-                }
-                
-                CommandState.currentMode = mode
-                CommandState.inError = inError
-                CommandState.errorReason = reason
-                
-                if (CommandState.inError && CommandState.errorReason.isNotEmpty()) {
-                    feedbackListener?.invoke("Robot Error: ${CommandState.errorReason}")
+
+            // Msg ID check for Retry removal
+            if (json.has("msg_id")) {
+                val msgId = json.getString("msg_id")
+                pendingRequests.remove(msgId)?.let {
+                    handler.removeCallbacks(it.runnable)
                 }
             }
 
-            // 3. Handle move_ack
-            if (json.optString("type") == "move_ack") {
-                val accepted = json.optBoolean("accepted", false)
-                val reason = json.optString("reason", "")
-                AppLogger.rx("Move Ack: Accepted=$accepted${if (accepted) "" else ", Reason: $reason"}")
-                if (accepted) {
-                    feedbackListener?.invoke("MOVE_SUCCESS")
-                } else {
-                    feedbackListener?.invoke("MOVE_FAILED: $reason")
+            // 1. Robot Status (Streaming)
+            if (json.has("mode") && json.has("in_error")) {
+                val status = gson.fromJson(text, RobotStatus::class.java)
+                
+                // Ping tracking
+                status.timestamp?.let { sentTime ->
+                    lastPingMs = System.currentTimeMillis() - sentTime
+                    onPingUpdateListener?.invoke(lastPingMs)
                 }
+
+                // Global History Update
+                status.tagX?.let { x -> status.tagY?.let { y ->
+                    CommandState.addHistory(MapView.Pt(x.toFloat(), y.toFloat()))
+                }}
+
+                if (CommandState.currentMode != status.mode || CommandState.inError != status.inError) {
+                    AppLogger.rx("Status Update: Mode=${status.mode}, Error=${status.inError}")
+                }
+                
+                CommandState.currentMode = status.mode
+                CommandState.inError = status.inError
+                CommandState.errorReason = status.errorReason ?: ""
+                
+                robotStatusListener?.invoke(status)
             }
-        } catch (e: Exception) {
-            // Might be other JSON data like Map or GPath, ignore parsing errors here
+
+            // 2. Control Ack
+            if (json.has("requested_mode") && json.has("accepted")) {
+                val ack = gson.fromJson(text, ControlAck::class.java)
+                AppLogger.rx("Mode Ack: ${ack.currentMode} (Accepted: ${ack.accepted})")
+                if (!ack.accepted) feedbackListener?.invoke(ack.reason ?: "Rejected")
+            }
+
+            // 3. Map Data (Reliable - Requires App Ack)
+            if (json.optString("type") == "map_data") {
+                val mapData = gson.fromJson(text, MapData::class.java)
+                AppLogger.rx("Map Data Received [ID: ${mapData.msgId}]")
+                
+                // Send Ack to robot
+                mapData.msgId?.let { send(AppAck(msgId = it)) }
+                
+                mapDataListener?.invoke(mapData)
+            }
+
+            // 4. Move Ack
+            if (json.optString("type") == "move_ack") {
+                val ack = gson.fromJson(text, MoveAck::class.java)
+                AppLogger.rx("Move Ack: Accepted=${ack.accepted}")
+                feedbackListener?.invoke(if (ack.accepted) "MOVE_SUCCESS" else "MOVE_FAILED: ${ack.reason}")
+            }
+
+        } catch (e: Exception) { /* Parsing other data */ }
+    }
+
+    /**
+     * Sends a structured request to the robot.
+     */
+    fun send(request: RobotRequest) {
+        val json = gson.toJson(request)
+        
+        when (request) {
+            is ControlRequest -> {
+                if (request.swBits != lastLoggedSwBits || request.keyBits != lastLoggedKeyBits) {
+                    AppLogger.tx("Update: Mode=${CommandState.bitsToModeName(request.swBits)}, Key=${keyToDesc(request.keyBits)}")
+                    lastLoggedSwBits = request.swBits
+                    lastLoggedKeyBits = request.keyBits
+                }
+                sendRaw(json)
+            }
+            is MoveRequest -> {
+                AppLogger.tx("Move Request: (${request.x}, ${request.y}) [ID: ${request.msgId}]")
+                enqueueRetry(request.msgId, json, "move")
+            }
+            is PoweroffRequest -> {
+                AppLogger.tx("Poweroff Request [ID: ${request.msgId}]")
+                enqueueRetry(request.msgId, json, "poweroff")
+            }
+            is GeneratePathRequest -> {
+                AppLogger.tx("GeneratePath Request [ID: ${request.msgId}]")
+                enqueueRetry(request.msgId, json, "generate_path")
+            }
+            is AppAck -> {
+                // No retry for Ack itself
+                sendRaw(json)
+            }
         }
     }
 
-    /** Send a JSON string to the robot. */
-    fun send(json: String) {
-        try {
-            val obj = org.json.JSONObject(json)
-            if (obj.has("command")) {
-                // Non-periodic commands (move, poweroff, etc.)
-                AppLogger.tx("Command: ${obj.getString("command")} - $json")
-            } else if (obj.has("sw_bits")) {
-                // Periodic state updates
-                val sw = obj.getInt("sw_bits")
-                val key = obj.getInt("key_bits")
-                val speed = obj.getInt("speed_bits")
-                
-                if (sw != lastLoggedSwBits || key != lastLoggedKeyBits || speed != lastLoggedSpeedBits) {
-                    val modeName = CommandState.bitsToModeName(sw)
-                    val keyDesc = when(key) {
-                        0b1000 -> "FRONT"
-                        0b0100 -> "BACK"
-                        0b0010 -> "LEFT"
-                        0b0001 -> "RIGHT"
-                        else -> "STOP"
-                    }
-                    AppLogger.tx("Update: ReqMode=$modeName, Key=$keyDesc")
-                    lastLoggedSwBits = sw
-                    lastLoggedKeyBits = key
-                    lastLoggedSpeedBits = speed
+    private fun sendRaw(json: String) {
+        webSocket?.send(json) ?: Log.e(TAG, "Socket not connected")
+    }
+
+    private fun enqueueRetry(msgId: String, json: String, cmdName: String) {
+        val runnable = object : Runnable {
+            override fun run() {
+                val req = pendingRequests[msgId] ?: return
+                if (req.retryCount < MAX_RETRIES) {
+                    req.retryCount++
+                    AppLogger.tx("Retry ($cmdName) ${req.retryCount}/$MAX_RETRIES")
+                    sendRaw(json)
+                    handler.postDelayed(this, RETRY_TIMEOUT_MS)
+                } else {
+                    pendingRequests.remove(msgId)
+                    AppLogger.log("Error: No response for $cmdName")
+                    feedbackListener?.invoke("${cmdName.uppercase()}_RETRY_EXHAUSTED")
                 }
             }
-        } catch (e: Exception) {
-            // Log as raw if parsing fails
-            AppLogger.tx("Raw: $json")
         }
         
-        webSocket?.send(json) ?: Log.e(TAG, "Cannot send, socket not connected")
+        pendingRequests[msgId] = PendingRequest(msgId, json, cmdName, 0, runnable)
+        sendRaw(json)
+        handler.postDelayed(runnable, RETRY_TIMEOUT_MS)
     }
 
-    /** Stop and close the connection. */
-    fun stop() {
-        isStarted = false
-        webSocket?.close(1000, "App closed")
-        webSocket = null
+    fun generateId() = UUID.randomUUID().toString().substring(0, 8)
+
+    private fun keyToDesc(key: Int) = when(key) {
+        0b1000 -> "FRONT"; 0b0100 -> "BACK"; 0b0010 -> "LEFT"; 0b0001 -> "RIGHT"; else -> "STOP"
     }
 }
