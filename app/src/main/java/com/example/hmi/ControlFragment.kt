@@ -67,11 +67,20 @@ class ControlFragment : Fragment() {
         val threshold = 0.3f
         var bits = 0b0000
         
-        // Y is inverted in JoystickView (up is negative)
-        if (y < -threshold) bits = bits or 0b1000 // FRONT
-        if (y > threshold)  bits = bits or 0b0100 // BACK
-        if (x < -threshold) bits = bits or 0b0010 // LEFT
-        if (x > threshold)  bits = bits or 0b0001 // RIGHT
+        val absX = if (x < 0) -x else x
+        val absY = if (y < 0) -y else y
+        
+        if (absX > threshold || absY > threshold) {
+            if (absY >= absX) {
+                // Dominant vertical movement
+                if (y < 0) bits = 0b1000 // FRONT
+                else bits = 0b0100       // BACK
+            } else {
+                // Dominant horizontal movement
+                if (x < 0) bits = 0b0010 // LEFT
+                else bits = 0b0001       // RIGHT
+            }
+        }
         
         if (CommandState.keyBits != bits) {
             CommandState.keyBits = bits
