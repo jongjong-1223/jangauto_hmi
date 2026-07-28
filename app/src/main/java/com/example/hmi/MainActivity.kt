@@ -42,7 +42,6 @@ class MainActivity : AppCompatActivity() {
                 val f: Fragment = when (item.itemId) {
                     R.id.nav_control -> ControlFragment()
                     R.id.nav_gpath -> GPathFragment()
-                    R.id.nav_log -> LogFragment()
                     else -> ControlFragment()
                 }
                 showFragment(f)

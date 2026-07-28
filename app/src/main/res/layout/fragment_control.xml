@@ -1,140 +1,133 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="#F5F5F5">
 
-    <LinearLayout
-        android:layout_width="match_parent"
+    <!-- Top Bar -->
+    <TextView
+        android:id="@+id/tvHeader"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:text="HMI Control Center"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:layout_margin="16dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <ImageButton
+        android:id="@+id/btnSettings"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:src="@android:drawable/ic_menu_manage"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:layout_margin="8dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Center Log Area -->
+    <LinearLayout
+        android:id="@+id/logArea"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
         android:orientation="vertical"
-        android:padding="20dp">
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="HMI - RPi Control"
-            android:textSize="24sp"
-            android:textStyle="bold"
-            android:gravity="center"
-            android:paddingBottom="8dp" />
-
-        <Button
-            android:id="@+id/btnPoweroff"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="⏻ POWEROFF (라즈베리파이 종료)"
-            android:backgroundTint="#C62828"
-            android:textColor="#FFFFFF"
-            android:layout_marginBottom="12dp" />
+        android:background="#FFFFFF"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp"
+        android:padding="12dp"
+        app:layout_constraintTop_toBottomOf="@id/tvHeader"
+        app:layout_constraintBottom_toTopOf="@id/bottomControl"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
 
         <TextView
             android:id="@+id/tvCurrentState"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="State: STOP"
-            android:textSize="18sp"
-            android:paddingBottom="8dp" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Drive Mode"
-            android:textSize="16sp"
+            android:textSize="15sp"
             android:textStyle="bold"
-            android:paddingTop="8dp"
             android:paddingBottom="4dp" />
 
+        <ScrollView
+            android:id="@+id/scrollLog"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+            <LinearLayout
+                android:id="@+id/logContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+        </ScrollView>
+    </LinearLayout>
+
+    <!-- Bottom Control Area -->
+    <LinearLayout
+        android:id="@+id/bottomControl"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="12dp"
+        android:background="#EEEEEE"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- Target Move -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingBottom="8dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="MOVE(m) X:" android:textSize="12sp" />
+            <EditText android:id="@+id/etTargetX" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:inputType="numberDecimal|numberSigned" android:hint="0.0" android:textSize="14sp" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Y:" android:textSize="12sp" android:layout_marginStart="8dp" />
+            <EditText android:id="@+id/etTargetY" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:inputType="numberDecimal|numberSigned" android:hint="0.0" android:textSize="14sp" />
+            <Button android:id="@+id/btnMove" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="MOVE" android:layout_marginStart="8dp" />
+        </LinearLayout>
+
+        <!-- Mode Selection -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal">
-            <Button android:id="@+id/btnStop" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="STOP" />
-            <Button android:id="@+id/btnKey" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="KEY" />
-            <Button android:id="@+id/btnCali" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="CALI" />
+            <Button android:id="@+id/btnStop" android:layout_width="0dp" android:layout_height="36dp" android:layout_weight="1" android:text="STOP" android:textSize="10sp" android:padding="0dp" android:layout_margin="2dp" />
+            <Button android:id="@+id/btnKey" android:layout_width="0dp" android:layout_height="36dp" android:layout_weight="1" android:text="KEY" android:textSize="10sp" android:padding="0dp" android:layout_margin="2dp" />
+            <Button android:id="@+id/btnCali" android:layout_width="0dp" android:layout_height="36dp" android:layout_weight="1" android:text="CALI" android:textSize="10sp" android:padding="0dp" android:layout_margin="2dp" />
+            <Button android:id="@+id/btnAlign" android:layout_width="0dp" android:layout_height="36dp" android:layout_weight="1" android:text="ALIGN" android:textSize="10sp" android:padding="0dp" android:layout_margin="2dp" />
+            <Button android:id="@+id/btnRun" android:layout_width="0dp" android:layout_height="36dp" android:layout_weight="1" android:text="RUN" android:textSize="10sp" android:padding="0dp" android:layout_margin="2dp" />
         </LinearLayout>
 
-        <LinearLayout
-            android:layout_width="match_parent"
+        <!-- Manual Direction Keys -->
+        <GridLayout
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="horizontal">
-            <Button android:id="@+id/btnAlign" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="ALIGN" />
-            <Button android:id="@+id/btnRun" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="RUN" />
-        </LinearLayout>
+            android:layout_gravity="center"
+            android:columnCount="3"
+            android:rowCount="2"
+            android:layout_marginTop="8dp">
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Option"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:paddingTop="20dp"
-            android:paddingBottom="4dp" />
+            <View android:layout_width="60dp" android:layout_height="0dp" />
+            <Button android:id="@+id/btnFront" android:layout_width="60dp" android:layout_height="48dp" android:text="↑" />
+            <View android:layout_width="60dp" android:layout_height="0dp" />
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
-            <androidx.appcompat.widget.SwitchCompat android:id="@+id/swVideo" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="VIDEO" />
-            <androidx.appcompat.widget.SwitchCompat android:id="@+id/swSafe" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="SAFE" />
-        </LinearLayout>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Speed"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:paddingTop="20dp"
-            android:paddingBottom="4dp" />
-
-        <TextView
-            android:id="@+id/tvCurrentSpeed"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Speed: MEDIUM"
-            android:textSize="16sp"
-            android:paddingBottom="4dp" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
-            <Button android:id="@+id/btnSlow" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="SLOW" />
-            <Button android:id="@+id/btnMedium" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="MEDIUM" />
-            <Button android:id="@+id/btnFast" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="FAST" />
-        </LinearLayout>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Manual Control"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:paddingTop="20dp"
-            android:paddingBottom="4dp" />
-
-        <Button
-            android:id="@+id/btnFront"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="FRONT" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
-            <Button android:id="@+id/btnLeft" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="ROTATE LEFT" />
-            <Button android:id="@+id/btnBack" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="BACK" />
-            <Button android:id="@+id/btnRight" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="ROTATE RIGHT" />
-        </LinearLayout>
+            <Button android:id="@+id/btnLeft" android:layout_width="60dp" android:layout_height="48dp" android:text="←" />
+            <Button android:id="@+id/btnBack" android:layout_width="60dp" android:layout_height="48dp" android:text="↓" />
+            <Button android:id="@+id/btnRight" android:layout_width="60dp" android:layout_height="48dp" android:text="→" />
+        </GridLayout>
 
         <TextView
             android:id="@+id/tvLastJson"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="JSON: -"
-            android:textSize="13sp"
-            android:paddingTop="24dp"
-            android:paddingBottom="20dp" />
+            android:textSize="10sp"
+            android:gravity="center"
+            android:paddingTop="4dp" />
+
     </LinearLayout>
-</ScrollView>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

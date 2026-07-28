@@ -37,9 +37,12 @@ object SocketManager {
 
     // Listeners for incoming data
     private val listeners = mutableSetOf<(String) -> Unit>()
+    // Specialized listener for handshake feedback (reason for rejection)
+    private var feedbackListener: ((String) -> Unit)? = null
 
     fun addListener(l: (String) -> Unit) { listeners.add(l) }
     fun removeListener(l: (String) -> Unit) { listeners.remove(l) }
+    fun setFeedbackListener(l: ((String) -> Unit)?) { feedbackListener = l }
 
     /** Update the target host and port, and reconnect if necessary. */
     fun updateHost(newHost: String, newPort: Int) {
@@ -89,6 +92,7 @@ object SocketManager {
 
             override fun onMessage(webSocket: WebSocket, text: String) {
                 handler.post {
+                    processRobotMessage(text)
                     listeners.forEach { it(text) }
                 }
             }
@@ -106,6 +110,48 @@ object SocketManager {
                 handler.postDelayed({ if (isStarted) connect() }, Config.RECONNECT_DELAY_MS)
             }
         })
+    }
+
+    private fun processRobotMessage(text: String) {
+        try {
+            val json = org.json.JSONObject(text)
+            
+            // 1. Handle control_state_ack
+            if (json.has("requested_mode") && json.has("accepted")) {
+                val accepted = json.getBoolean("accepted")
+                val currentMode = json.getString("current_mode")
+                val reason = json.optString("reason", "")
+                
+                CommandState.currentMode = currentMode
+                if (!accepted && reason.isNotEmpty()) {
+                    feedbackListener?.invoke(reason)
+                }
+            }
+            
+            // 2. Handle robot_status
+            if (json.has("mode") && json.has("in_error")) {
+                CommandState.currentMode = json.getString("mode")
+                CommandState.inError = json.getBoolean("in_error")
+                CommandState.errorReason = json.optString("error_reason", "")
+                
+                if (CommandState.inError && CommandState.errorReason.isNotEmpty()) {
+                    feedbackListener?.invoke("Robot Error: ${CommandState.errorReason}")
+                }
+            }
+
+            // 3. Handle move_ack
+            if (json.optString("type") == "move_ack") {
+                val accepted = json.optBoolean("accepted", false)
+                val reason = json.optString("reason", "")
+                if (accepted) {
+                    feedbackListener?.invoke("MOVE_SUCCESS")
+                } else {
+                    feedbackListener?.invoke("MOVE_FAILED: $reason")
+                }
+            }
+        } catch (e: Exception) {
+            // Might be other JSON data like Map or GPath, ignore parsing errors here
+        }
     }
 
     /** Send a JSON string to the robot. */
