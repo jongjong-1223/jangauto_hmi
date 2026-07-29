@@ -105,58 +105,98 @@
                 android:layout_marginTop="8dp">
 
                 <!-- Vertical Speed Bar -->
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/speedBarContainer"
-                    android:layout_width="40dp"
+                <LinearLayout
+                    android:id="@+id/speedControlArea"
+                    android:layout_width="wrap_content"
                     android:layout_height="0dp"
                     android:layout_marginStart="16dp"
-                    app:cardCornerRadius="8dp"
-                    app:cardElevation="0dp"
+                    android:orientation="vertical"
+                    android:gravity="center_horizontal"
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent"
-                    app:strokeColor="@color/border_gray"
-                    app:strokeWidth="1dp"
-                    android:clickable="true"
-                    android:focusable="true">
+                    app:layout_constraintTop_toTopOf="parent">
 
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:orientation="vertical">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="SPEED"
+                        android:textSize="9sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/text_secondary"
+                        android:layout_marginBottom="4dp" />
 
-                        <View
-                            android:id="@+id/speedFast"
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/speedBarContainer"
+                        android:layout_width="40dp"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"
+                        app:cardCornerRadius="8dp"
+                        app:cardElevation="0dp"
+                        app:strokeColor="@color/border_gray"
+                        app:strokeWidth="1dp"
+                        android:clickable="true"
+                        android:focusable="true">
+
+                        <LinearLayout
                             android:layout_width="match_parent"
-                            android:layout_height="0dp"
-                            android:layout_weight="1"
-                            android:background="@color/surface_background" />
+                            android:layout_height="match_parent"
+                            android:orientation="vertical">
 
-                        <View
-                            android:layout_width="match_parent"
-                            android:layout_height="1dp"
-                            android:background="@color/border_gray" />
+                            <FrameLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="0dp"
+                                android:layout_weight="1">
+                                <View
+                                    android:id="@+id/speedFast"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:background="@color/surface_background" />
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="F"
+                                    android:textSize="10sp"
+                                    android:layout_gravity="center"
+                                    android:textColor="@color/text_secondary" />
+                            </FrameLayout>
 
-                        <View
-                            android:id="@+id/speedMedium"
-                            android:layout_width="match_parent"
-                            android:layout_height="0dp"
-                            android:layout_weight="1"
-                            android:background="@color/surface_background" />
+                            <View
+                                android:layout_width="match_parent"
+                                android:layout_height="1dp"
+                                android:background="@color/border_gray" />
 
-                        <View
-                            android:layout_width="match_parent"
-                            android:layout_height="1dp"
-                            android:background="@color/border_gray" />
+                            <View
+                                android:id="@+id/speedMedium"
+                                android:layout_width="match_parent"
+                                android:layout_height="0dp"
+                                android:layout_weight="1"
+                                android:background="@color/surface_background" />
 
-                        <View
-                            android:id="@+id/speedSlow"
-                            android:layout_width="match_parent"
-                            android:layout_height="0dp"
-                            android:layout_weight="1"
-                            android:background="@color/surface_background" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
+                            <View
+                                android:layout_width="match_parent"
+                                android:layout_height="1dp"
+                                android:background="@color/border_gray" />
+
+                            <FrameLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="0dp"
+                                android:layout_weight="1">
+                                <View
+                                    android:id="@+id/speedSlow"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:background="@color/surface_background" />
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="S"
+                                    android:textSize="10sp"
+                                    android:layout_gravity="center"
+                                    android:textColor="@color/text_secondary" />
+                            </FrameLayout>
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+                </LinearLayout>
 
                 <com.example.hmi.JoystickView
                     android:id="@+id/joystickView"

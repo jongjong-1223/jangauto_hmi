@@ -19,18 +19,6 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
 
-    <TextView
-        android:id="@+id/tvPing"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Ping: --ms"
-        android:textSize="11sp"
-        android:textColor="@color/accent_green"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@id/btnFullMap"
-        android:layout_marginEnd="12dp" />
-
     <ImageButton
         android:id="@+id/btnFullMap"
         android:layout_width="40dp"

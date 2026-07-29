@@ -39,10 +39,6 @@ object SocketManager {
     private var webSocket: WebSocket? = null
     private var isStarted = false
 
-    // Monitoring
-    private var lastPingMs = -1L
-    private var onPingUpdateListener: ((Long) -> Unit)? = null
-
     // State tracking for logs
     private var lastLoggedSwBits = -1
     private var lastLoggedKeyBits = -1
@@ -62,13 +58,16 @@ object SocketManager {
 
     // Listeners
     private var feedbackListener: ((String) -> Unit)? = null
-    private var mapDataListener: ((MapData) -> Unit)? = null
-    private var robotStatusListener: ((RobotStatus) -> Unit)? = null
+    private val mapDataListeners = mutableListOf<(MapData) -> Unit>()
+    private val robotStatusListeners = mutableListOf<(RobotStatus) -> Unit>()
 
     fun setFeedbackListener(l: ((String) -> Unit)?) { feedbackListener = l }
-    fun setOnPingUpdateListener(l: ((Long) -> Unit)?) { onPingUpdateListener = l }
-    fun setMapDataListener(l: ((MapData) -> Unit)?) { mapDataListener = l }
-    fun setRobotStatusListener(l: ((RobotStatus) -> Unit)?) { robotStatusListener = l }
+    
+    fun addMapDataListener(l: (MapData) -> Unit) { synchronized(mapDataListeners) { mapDataListeners.add(l) } }
+    fun removeMapDataListener(l: (MapData) -> Unit) { synchronized(mapDataListeners) { mapDataListeners.remove(l) } }
+    
+    fun addRobotStatusListener(l: (RobotStatus) -> Unit) { synchronized(robotStatusListeners) { robotStatusListeners.add(l) } }
+    fun removeRobotStatusListener(l: (RobotStatus) -> Unit) { synchronized(robotStatusListeners) { robotStatusListeners.remove(l) } }
 
     fun updateHost(newHost: String, newPort: Int) {
         if (Config.HOST == newHost && Config.PORT == newPort && isStarted && webSocket != null) return
@@ -92,7 +91,9 @@ object SocketManager {
         // Reset logging state
         lastLoggedSwBits = -1
         lastLoggedKeyBits = -1
-        lastPingMs = -1L
+
+        synchronized(mapDataListeners) { mapDataListeners.clear() }
+        synchronized(robotStatusListeners) { robotStatusListeners.clear() }
     }
 
     private fun disconnectInternal() { webSocket?.close(1000, "Changing host"); webSocket = null }
@@ -151,18 +152,23 @@ object SocketManager {
                 CommandState.inError = status.inError
                 CommandState.errorReason = status.errorReason ?: ""
                 
-                robotStatusListener?.invoke(status)
+                synchronized(robotStatusListeners) {
+                    robotStatusListeners.forEach { it.invoke(status) }
+                }
             }
 
             // 3. Map Data (Reliable - Requires App Ack)
             if (json.optString("type") == "map_data") {
                 val mapData = gson.fromJson(text, MapData::class.java)
-                AppLogger.rx("Map Data Received [ID: ${mapData.msgId}]")
                 
+                CommandState.lastMapData = mapData
+
                 // Send Ack to robot
                 mapData.msgId?.let { send(AppAck(msgId = it)) }
                 
-                mapDataListener?.invoke(mapData)
+                synchronized(mapDataListeners) {
+                    mapDataListeners.forEach { it.invoke(mapData) }
+                }
             }
 
             // 4. Move Ack

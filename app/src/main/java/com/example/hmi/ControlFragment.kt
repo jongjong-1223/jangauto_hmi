@@ -37,6 +37,14 @@ class ControlFragment : Fragment() {
         }
     }
 
+    private val mapDataListener: (MapData) -> Unit = { data ->
+        activity?.runOnUiThread {
+            val mapPoints = data.map?.map { MapView.Pt(it.x.toFloat(), it.y.toFloat()) } ?: emptyList()
+            val obstacles = data.obstacles?.map { obs -> obs.map { MapView.Pt(it.x.toFloat(), it.y.toFloat()) } } ?: emptyList()
+            mapZoom.setMapData(mapPoints, obstacles, emptyList())
+        }
+    }
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         val view = inflater.inflate(R.layout.fragment_control, container, false)
         (activity as? MainActivity)?.setupTopBar(view)
@@ -100,17 +108,28 @@ class ControlFragment : Fragment() {
         val tx = status.tagX?.toFloat() ?: return
         val ty = status.tagY?.toFloat() ?: return
         val tag = MapView.Pt(tx, ty)
-        mapZoom.setRobotState(tag, status.tagOri?.toFloat() ?: 0f, status.tagVel?.toFloat() ?: 0f, CommandState.getHistory(), true)
+        mapZoom.setRobotState(
+            tag, 
+            status.tagOri?.toFloat() ?: 0f, 
+            status.tagVel?.toFloat() ?: 0f, 
+            status.tagYawRate?.toFloat() ?: 0f,
+            CommandState.getHistory(), 
+            true
+        )
         syncUi()
     }
 
     private fun updateKeyBitsFromJoystick(x: Float, y: Float) {
         val threshold = 0.3f
         var bits = 0b0000
-        val ax = Math.abs(x); val ay = Math.abs(y)
+        val ax = kotlin.math.abs(x)
+        val ay = kotlin.math.abs(y)
         if (ax > threshold || ay > threshold) {
-            if (ay >= ax) bits = if (y < 0) 0b1000 else 0b0100
-            else bits = if (x < 0) 0b0010 else 0b0001
+            bits = if (ay >= ax) {
+                if (y < 0) 0b1000 else 0b0100
+            } else {
+                if (x < 0) 0b0010 else 0b0001
+            }
         }
         CommandState.keyBits = bits
     }
@@ -174,20 +193,20 @@ class ControlFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        SocketManager.setRobotStatusListener(statusListener)
-        SocketManager.setMapDataListener { data ->
-            val mapPoints = data.map?.map { MapView.Pt(it.x.toFloat(), it.y.toFloat()) } ?: emptyList()
-            val obstacles = data.obstacles?.map { obs -> obs.map { MapView.Pt(it.x.toFloat(), it.y.toFloat()) } } ?: emptyList()
-            mapZoom.setMapData(mapPoints, obstacles, emptyList())
-        }
+        SocketManager.addRobotStatusListener(statusListener)
+        SocketManager.addMapDataListener(mapDataListener)
+        
+        // Immediate apply cached map
+        CommandState.lastMapData?.let { mapDataListener.invoke(it) }
+
         handler.post(timeoutRunnable)
         syncUi()
     }
 
     override fun onPause() {
         super.onPause()
-        SocketManager.setRobotStatusListener(null)
-        SocketManager.setMapDataListener(null)
+        SocketManager.removeRobotStatusListener(statusListener)
+        SocketManager.removeMapDataListener(mapDataListener)
         handler.removeCallbacks(timeoutRunnable)
     }
 }

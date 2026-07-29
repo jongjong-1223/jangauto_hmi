@@ -22,6 +22,8 @@ object CommandState {
     @Volatile var inError = false
     @Volatile var errorReason = ""
 
+    @Volatile var lastMapData: com.example.hmi.model.MapData? = null
+
     // Shared Movement History
     private val history = mutableListOf<MapView.Pt>()
     private const val MAX_HISTORY = 100
@@ -49,6 +51,7 @@ object CommandState {
         isSafeMode = false
         inError = false
         errorReason = ""
+        lastMapData = null
         clearHistory()
         AppLogger.clear()
     }

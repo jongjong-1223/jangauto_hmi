@@ -19,7 +19,6 @@ import com.google.android.material.navigation.NavigationView
 class MainActivity : AppCompatActivity() {
 
     private lateinit var drawerLayout: DrawerLayout
-    private var tvPing: TextView? = null
     private var mapFullInDialog: MapView? = null
     private var logContainerInDialog: LinearLayout? = null
 
@@ -60,21 +59,18 @@ class MainActivity : AppCompatActivity() {
             true
         }
 
-        SocketManager.setOnPingUpdateListener { ping ->
-            runOnUiThread { tvPing?.text = getString(R.string.ping_format, ping) }
-        }
-        
-        SocketManager.setRobotStatusListener { status ->
+        SocketManager.addRobotStatusListener { status ->
             runOnUiThread { mapFullInDialog?.setRobotState(
                 tag = status.tagX?.let { x -> status.tagY?.let { y -> MapView.Pt(x.toFloat(), y.toFloat()) } },
                 ori = status.tagOri?.toFloat() ?: 0f,
                 vel = status.tagVel?.toFloat() ?: 0f,
+                yawRate = status.tagYawRate?.toFloat() ?: 0f,
                 history = CommandState.getHistory(),
                 hasTag = true
             )}
         }
         
-        SocketManager.setMapDataListener { data ->
+        SocketManager.addMapDataListener { data ->
             runOnUiThread {
                 val mapPoints = data.map?.map { MapView.Pt(it.x.toFloat(), it.y.toFloat()) } ?: emptyList()
                 val obstacles = data.obstacles?.map { obs -> obs.map { MapView.Pt(it.x.toFloat(), it.y.toFloat()) } } ?: emptyList()
@@ -112,10 +108,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun setupTopBar(root: View) {
-        tvPing = root.findViewById(R.id.tvPing)
-        
         val topBar = root.findViewById<View>(R.id.topBar)
-        val bottomArea = root.findViewById<View>(R.id.bottomControl) 
+        val bottomArea = root.findViewById(R.id.bottomControl) 
             ?: root.findViewById<View>(R.id.gpathContainer)
             ?: root.findViewById<View>(R.id.graphContainer)
 
@@ -145,6 +139,14 @@ class MainActivity : AppCompatActivity() {
         val view = LayoutInflater.from(this).inflate(R.layout.dialog_full_map, null)
         mapFullInDialog = view.findViewById(R.id.mapViewFull)
         mapFullInDialog?.isZoomMode = false
+        
+        // Immediate apply cached data
+        CommandState.lastMapData?.let { data ->
+            val pts = data.map?.map { MapView.Pt(it.x.toFloat(), it.y.toFloat()) } ?: emptyList()
+            val obs = data.obstacles?.map { o -> o.map { MapView.Pt(it.x.toFloat(), it.y.toFloat()) } } ?: emptyList()
+            mapFullInDialog?.setMapData(pts, obs, emptyList())
+        }
+
         AlertDialog.Builder(this).setView(view).setOnDismissListener { mapFullInDialog = null }.show()
     }
 
@@ -181,8 +183,6 @@ class MainActivity : AppCompatActivity() {
             .setPositiveButton("Yes") { _, _ -> SocketManager.send(PoweroffRequest(msgId = SocketManager.generateId())) }
             .setNegativeButton("No", null).show()
     }
-
-    fun openDrawer() = drawerLayout.openDrawer(GravityCompat.START)
 
     override fun onDestroy() {
         super.onDestroy()

@@ -14,6 +14,15 @@ class GPathFragment : Fragment() {
     private lateinit var mapZoom: MapView
     private lateinit var tvStatus: TextView
 
+    private val mapDataListener: (MapData) -> Unit = { data ->
+        activity?.runOnUiThread {
+            val a = data.map?.map { MapView.Pt(it.x.toFloat(), it.y.toFloat()) } ?: emptyList()
+            val o = data.obstacles?.map { obs -> obs.map { MapView.Pt(it.x.toFloat(), it.y.toFloat()) } } ?: emptyList()
+            mapFull.setMapData(a, o, emptyList())
+            mapZoom.setMapData(a, o, emptyList())
+        }
+    }
+
     private val statusListener: (RobotStatus) -> Unit = { status ->
         activity?.runOnUiThread { updateFromStatus(status) }
     }
@@ -41,9 +50,12 @@ class GPathFragment : Fragment() {
         val h = CommandState.getHistory()
         val o = status.tagOri?.toFloat() ?: 0f
         val v = status.tagVel?.toFloat() ?: 0f
-        mapFull.setRobotState(tag, o, v, h, true)
-        mapZoom.setRobotState(tag, o, v, h, true)
-        tvStatus.text = getString(R.string.pos_format, tx, ty, o, v)
+        val w = status.tagYawRate?.toFloat() ?: 0f
+        mapFull.setRobotState(tag, o, v, w, h, true)
+        mapZoom.setRobotState(tag, o, v, w, h, true)
+        
+        val oDeg = Math.toDegrees(o.toDouble()).toFloat()
+        tvStatus.text = getString(R.string.pos_format, tx, ty, oDeg, v)
     }
 
     private fun generatePath(view: View) {
@@ -58,17 +70,16 @@ class GPathFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        SocketManager.setRobotStatusListener(statusListener)
-        SocketManager.setMapDataListener { data ->
-            val a = data.map?.map { MapView.Pt(it.x.toFloat(), it.y.toFloat()) } ?: emptyList()
-            val o = data.obstacles?.map { obs -> obs.map { MapView.Pt(it.x.toFloat(), it.y.toFloat()) } } ?: emptyList()
-            mapFull.setMapData(a, o, emptyList()); mapZoom.setMapData(a, o, emptyList())
-        }
+        SocketManager.addRobotStatusListener(statusListener)
+        SocketManager.addMapDataListener(mapDataListener)
+        
+        // Immediate apply cached map
+        CommandState.lastMapData?.let { mapDataListener.invoke(it) }
     }
 
     override fun onPause() {
         super.onPause()
-        SocketManager.setRobotStatusListener(null)
-        SocketManager.setMapDataListener(null)
+        SocketManager.removeRobotStatusListener(statusListener)
+        SocketManager.removeMapDataListener(mapDataListener)
     }
 }
