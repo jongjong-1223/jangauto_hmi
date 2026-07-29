@@ -163,7 +163,11 @@ class MainActivity : AppCompatActivity() {
         for (log in logs.take(50)) {
             val tv = TextView(this).apply {
                 text = log; textSize = 12f; setPadding(0, 4, 0, 4)
-                setTextColor(if (log.contains("Error") || log.contains("failed")) Color.RED else Color.BLACK)
+                val isError = (log.contains("Error", ignoreCase = true) && !log.contains("Error=false", ignoreCase = true)) || 
+                             log.contains("failed", ignoreCase = true) ||
+                             log.contains("timed out", ignoreCase = true) ||
+                             log.contains("exhausted", ignoreCase = true)
+                setTextColor(if (isError) Color.RED else Color.BLACK)
             }
             container.addView(tv)
         }
