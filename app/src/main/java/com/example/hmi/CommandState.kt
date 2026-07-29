@@ -12,7 +12,8 @@ object CommandState {
     const val BIT_RUN   = 0b00001
 
     @Volatile var requestedSwBits = BIT_STOP
-    @Volatile var currentMode = "STOP"
+    @Volatile var currentState = "STOP"
+    @Volatile var lastRequestTime = 0L
     @Volatile var keyBits = 0b0000
     @Volatile var speedBits = 0b010
     @Volatile var isVideoOn = false
@@ -40,7 +41,8 @@ object CommandState {
      */
     fun reset() {
         requestedSwBits = BIT_STOP
-        currentMode = "STOP"
+        currentState = "STOP"
+        lastRequestTime = 0L
         keyBits = 0b0000
         speedBits = 0b010
         isVideoOn = false
@@ -51,8 +53,30 @@ object CommandState {
         AppLogger.clear()
     }
 
-    fun bitsToModeName(bits: Int): String = when (bits) {
+    fun bitsToStateName(bits: Int): String = when (bits) {
         BIT_STOP -> "STOP"; BIT_KEY -> "KEY"; BIT_CAL -> "CAL"; BIT_ALIGN -> "ALIGN"; BIT_RUN -> "RUN"
         else -> "UNKNOWN"
+    }
+
+    fun nameToBits(name: String): Int = when (name.uppercase()) {
+        "STOP" -> BIT_STOP; "KEY" -> BIT_KEY; "CAL", "CALI" -> BIT_CAL; "ALIGN" -> BIT_ALIGN; "RUN" -> BIT_RUN
+        else -> BIT_STOP
+    }
+
+    /**
+     * Enforces transition rules defined in APP_PROTOCOL_HANDSHAKE.md:
+     * - STOP, KEY, CAL can transition between each other freely.
+     * - ALIGN can only be requested from STOP, KEY, or CAL.
+     * - RUN can only be requested from ALIGN.
+     * - Moving "down" (e.g., RUN -> ALIGN or RUN/ALIGN -> STOP/KEY/CAL) is always allowed.
+     */
+    fun isTransitionAllowed(toBits: Int): Boolean {
+        val from = currentState
+        return when (toBits) {
+            BIT_STOP, BIT_KEY, BIT_CAL -> true // Always allowed (flexible group or down-transition)
+            BIT_ALIGN -> from == "STOP" || from == "KEY" || from == "CAL" || from == "CALI" || from == "ALIGN"
+            BIT_RUN -> from == "ALIGN" || from == "RUN"
+            else -> false
+        }
     }
 }

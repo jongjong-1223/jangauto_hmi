@@ -76,9 +76,9 @@ class MainActivity : AppCompatActivity() {
         
         SocketManager.setMapDataListener { data ->
             runOnUiThread {
-                val anchors = data.anchors?.map { MapView.Pt(it.x.toFloat(), it.y.toFloat()) } ?: emptyList()
-                val walls = data.walls?.map { wall -> wall.map { MapView.Pt(it.x.toFloat(), it.y.toFloat()) } } ?: emptyList()
-                mapFullInDialog?.setMapData(anchors, walls, emptyList())
+                val mapPoints = data.map?.map { MapView.Pt(it.x.toFloat(), it.y.toFloat()) } ?: emptyList()
+                val obstacles = data.obstacles?.map { obs -> obs.map { MapView.Pt(it.x.toFloat(), it.y.toFloat()) } } ?: emptyList()
+                mapFullInDialog?.setMapData(mapPoints, obstacles, emptyList())
             }
         }
 
@@ -173,9 +173,6 @@ class MainActivity : AppCompatActivity() {
         view.findViewById<Button>(R.id.btnPoweroff).setOnClickListener { confirmPoweroff(); dialog.dismiss() }
         view.findViewById<SwitchCompat>(R.id.swVideo).apply { isChecked = CommandState.isVideoOn; setOnCheckedChangeListener { _, c -> CommandState.isVideoOn = c } }
         view.findViewById<SwitchCompat>(R.id.swSafe).apply { isChecked = CommandState.isSafeMode; setOnCheckedChangeListener { _, c -> CommandState.isSafeMode = c } }
-        view.findViewById<Button>(R.id.btnSlow).setOnClickListener { CommandState.speedBits = 0b100 }
-        view.findViewById<Button>(R.id.btnMedium).setOnClickListener { CommandState.speedBits = 0b010 }
-        view.findViewById<Button>(R.id.btnFast).setOnClickListener { CommandState.speedBits = 0b001 }
         dialog.show()
     }
 

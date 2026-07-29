@@ -23,8 +23,7 @@ data class ControlRequest(
     @SerializedName("key_bits") val keyBits: Int,
     @SerializedName("speed_bits") val speedBits: Int,
     @SerializedName("video_bit") val videoBit: Int,
-    @SerializedName("safe_bit") val safeBit: Int,
-    @SerializedName("timestamp") val timestamp: Long = System.currentTimeMillis()
+    @SerializedName("safe_bit") val safeBit: Int
 ) : RobotRequest
 
 /**
@@ -61,28 +60,17 @@ data class GeneratePathRequest(
 ) : RobotRequest
 
 /**
- * Response from the robot for a mode transition request.
- */
-data class ControlAck(
-    @SerializedName("requested_mode") val requestedMode: String,
-    @SerializedName("accepted") val accepted: Boolean,
-    @SerializedName("current_mode") val currentMode: String,
-    @SerializedName("reason") val reason: String? = null
-)
-
-/**
  * Robot's current full status broadcast (Streaming).
  */
 data class RobotStatus(
-    @SerializedName("mode") val mode: String,
+    @SerializedName("current_state") val state: String,
     @SerializedName("in_error") val inError: Boolean,
     @SerializedName("error_reason") val errorReason: String? = null,
     @SerializedName("tag_x") val tagX: Double? = null,
     @SerializedName("tag_y") val tagY: Double? = null,
     @SerializedName("tag_ori") val tagOri: Double? = null,
     @SerializedName("tag_vel") val tagVel: Double? = null,
-    @SerializedName("tag_yaw_rate") val tagYawRate: Double? = null,
-    @SerializedName("timestamp") val timestamp: Long? = null
+    @SerializedName("tag_yaw_rate") val tagYawRate: Double? = null
 )
 
 /**
@@ -91,8 +79,8 @@ data class RobotStatus(
 data class MapData(
     @SerializedName("type") val type: String = "map_data",
     @SerializedName("msg_id") val msgId: String? = null,
-    @SerializedName("walls") val walls: List<List<Point>>? = null,
-    @SerializedName("anchors") val anchors: List<Point>? = null
+    @SerializedName("obstacles") val obstacles: List<List<Point>>? = null,
+    @SerializedName("map") val map: List<Point>? = null
 )
 
 data class Point(

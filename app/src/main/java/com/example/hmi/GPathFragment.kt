@@ -60,9 +60,9 @@ class GPathFragment : Fragment() {
         super.onResume()
         SocketManager.setRobotStatusListener(statusListener)
         SocketManager.setMapDataListener { data ->
-            val a = data.anchors?.map { MapView.Pt(it.x.toFloat(), it.y.toFloat()) } ?: emptyList()
-            val w = data.walls?.map { wall -> wall.map { MapView.Pt(it.x.toFloat(), it.y.toFloat()) } } ?: emptyList()
-            mapFull.setMapData(a, w, emptyList()); mapZoom.setMapData(a, w, emptyList())
+            val a = data.map?.map { MapView.Pt(it.x.toFloat(), it.y.toFloat()) } ?: emptyList()
+            val o = data.obstacles?.map { obs -> obs.map { MapView.Pt(it.x.toFloat(), it.y.toFloat()) } } ?: emptyList()
+            mapFull.setMapData(a, o, emptyList()); mapZoom.setMapData(a, o, emptyList())
         }
     }
 

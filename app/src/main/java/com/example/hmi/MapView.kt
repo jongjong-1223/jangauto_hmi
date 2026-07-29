@@ -13,8 +13,8 @@ class MapView @JvmOverloads constructor(
 
     var isZoomMode = false
 
-    private var anchors: List<Pt> = emptyList()
-    private var walls: List<List<Pt>> = emptyList()
+    private var mapPoints: List<Pt> = emptyList()
+    private var obstacles: List<List<Pt>> = emptyList()
     private var path: List<Pt> = emptyList()
     private var history: List<Pt> = emptyList()
     private var tag: Pt? = null
@@ -22,10 +22,10 @@ class MapView @JvmOverloads constructor(
     private var tagVel = 0f
     private var hasTag = false
 
-    private val anchorPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val mapPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#005EB8"); style = Paint.Style.STROKE; strokeWidth = 3f
     }
-    private val wallPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val obstaclePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#343A40"); style = Paint.Style.STROKE; strokeWidth = 5f; strokeCap = Paint.Cap.ROUND
     }
     private val pathPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -48,9 +48,9 @@ class MapView @JvmOverloads constructor(
     private val robotPath = Path()
     private val trailPath = Path()
 
-    fun setMapData(anchors: List<Pt>, walls: List<List<Pt>>, path: List<Pt>) {
-        this.anchors = anchors
-        this.walls = walls
+    fun setMapData(mapPoints: List<Pt>, obstacles: List<List<Pt>>, path: List<Pt>) {
+        this.mapPoints = mapPoints
+        this.obstacles = obstacles
         this.path = path
         invalidate()
     }
@@ -78,7 +78,7 @@ class MapView @JvmOverloads constructor(
             minY = currentTag.y - zoomSize/2f; maxY = currentTag.y + zoomSize/2f
             scale = minOf(w / zoomSize, h / zoomSize)
         } else {
-            val allPts = anchors + walls.flatten() + path + currentTag
+            val allPts = mapPoints + obstacles.flatten() + path + currentTag
             minX = (allPts.minOfOrNull { it.x } ?: -2f) - 1f; maxX = (allPts.maxOfOrNull { it.x } ?: 2f) + 1f
             minY = (allPts.minOfOrNull { it.y } ?: -2f) - 1f; maxY = (allPts.maxOfOrNull { it.y } ?: 2f) + 1f
             scale = minOf(w / (maxX - minX), h / (maxY - minY))
@@ -99,14 +99,14 @@ class MapView @JvmOverloads constructor(
         
         if (path.size >= 2) for (i in 0 until path.size - 1) canvas.drawLine(sx(path[i].x), sy(path[i].y), sx(path[i+1].x), sy(path[i+1].y), pathPaint)
         
-        for (wall in walls) {
-            if (wall.size < 2) continue
-            for (i in 0 until wall.size - 1) canvas.drawLine(sx(wall[i].x), sy(wall[i].y), sx(wall[i+1].x), sy(wall[i+1].y), wallPaint)
+        for (obs in obstacles) {
+            if (obs.size < 2) continue
+            for (i in 0 until obs.size - 1) canvas.drawLine(sx(obs[i].x), sy(obs[i].y), sx(obs[i+1].x), sy(obs[i+1].y), obstaclePaint)
         }
 
-        for ((i, a) in anchors.withIndex()) {
-            canvas.drawCircle(sx(a.x), sy(a.y), 6f, anchorPaint)
-            canvas.drawText("A${i+1}", sx(a.x) + 12f, sy(a.y) - 12f, textPaint)
+        for ((i, a) in mapPoints.withIndex()) {
+            canvas.drawCircle(sx(a.x), sy(a.y), 6f, mapPaint)
+            canvas.drawText("M${i+1}", sx(a.x) + 12f, sy(a.y) - 12f, textPaint)
         }
 
         // Draw Robot

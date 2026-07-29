@@ -135,36 +135,23 @@ object SocketManager {
             }
 
             // 1. Robot Status (Streaming)
-            if (json.has("mode") && json.has("in_error")) {
+            if (json.has("current_state") && json.has("in_error")) {
                 val status = gson.fromJson(text, RobotStatus::class.java)
                 
-                // Ping tracking
-                status.timestamp?.let { sentTime ->
-                    lastPingMs = System.currentTimeMillis() - sentTime
-                    onPingUpdateListener?.invoke(lastPingMs)
-                }
-
                 // Global History Update
                 status.tagX?.let { x -> status.tagY?.let { y ->
                     CommandState.addHistory(MapView.Pt(x.toFloat(), y.toFloat()))
                 }}
 
-                if (CommandState.currentMode != status.mode || CommandState.inError != status.inError) {
-                    AppLogger.rx("Status Update: Mode=${status.mode}, Error=${status.inError}")
+                if (CommandState.currentState != status.state || CommandState.inError != status.inError) {
+                    AppLogger.rx("Current State from Robot: ${status.state}, Error=${status.inError}")
                 }
                 
-                CommandState.currentMode = status.mode
+                CommandState.currentState = status.state
                 CommandState.inError = status.inError
                 CommandState.errorReason = status.errorReason ?: ""
                 
                 robotStatusListener?.invoke(status)
-            }
-
-            // 2. Control Ack
-            if (json.has("requested_mode") && json.has("accepted")) {
-                val ack = gson.fromJson(text, ControlAck::class.java)
-                AppLogger.rx("Mode Ack: ${ack.currentMode} (Accepted: ${ack.accepted})")
-                if (!ack.accepted) feedbackListener?.invoke(ack.reason ?: "Rejected")
             }
 
             // 3. Map Data (Reliable - Requires App Ack)
@@ -197,7 +184,7 @@ object SocketManager {
         when (request) {
             is ControlRequest -> {
                 if (request.swBits != lastLoggedSwBits || request.keyBits != lastLoggedKeyBits) {
-                    AppLogger.tx("Update: Mode=${CommandState.bitsToModeName(request.swBits)}, Key=${keyToDesc(request.keyBits)}")
+                    AppLogger.tx("Request State Change: ${CommandState.bitsToStateName(request.swBits)}, Key=${keyToDesc(request.keyBits)}")
                     lastLoggedSwBits = request.swBits
                     lastLoggedKeyBits = request.keyBits
                 }
