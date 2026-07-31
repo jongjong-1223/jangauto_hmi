@@ -60,6 +60,54 @@ data class GeneratePathRequest(
 ) : RobotRequest
 
 /**
+ * Command to generate a ㄹ-shaped coverage path based on a polygon.
+ */
+data class GenerateCoveragePathRequest(
+    @SerializedName("msg_id") val msgId: String,
+    @SerializedName("command") val command: String = "generate_coverage_path",
+    @SerializedName("polygon") val polygon: List<Point>,
+    @SerializedName("edge_safety_dist") val edgeSafetyDist: List<Double>,
+    @SerializedName("robot_radius") val robotRadius: Double,
+    @SerializedName("yaw_deg") val yawDeg: Double,
+    @SerializedName("ridge_spacing") val ridgeSpacing: Double,
+    @SerializedName("headland_length") val headlandLength: Double
+) : RobotRequest
+
+/**
+ * Result of coverage path generation, containing two candidate paths.
+ */
+data class CoveragePathResult(
+    @SerializedName("type") val type: String = "coverage_path_result",
+    @SerializedName("msg_id") val msgId: String,
+    @SerializedName("paths") val paths: List<CoveragePath>
+)
+
+data class CoveragePath(
+    @SerializedName("start_side") val startSide: String, // "left" or "right"
+    @SerializedName("rect_length") val rectLength: Double,
+    @SerializedName("rect_width") val rectWidth: Double,
+    @SerializedName("work_len") val workLen: Double,
+    @SerializedName("n_ridges") val nRidges: Int,
+    @SerializedName("waypoints") val waypoints: List<Waypoint>
+)
+
+data class Waypoint(
+    @SerializedName("x") val x: Double,
+    @SerializedName("y") val y: Double,
+    @SerializedName("kind") val kind: String // start, work_start, work_end, turn_out, turn_in, end
+)
+
+/**
+ * Command to select one of the generated candidate paths.
+ */
+data class SelectCoveragePathRequest(
+    @SerializedName("type") val type: String = "select_coverage_path",
+    @SerializedName("msg_id") val msgId: String,
+    @SerializedName("command") val command: String = "select_coverage_path",
+    @SerializedName("path_index") val pathIndex: Int
+) : RobotRequest
+
+/**
  * Robot's current full status broadcast (Streaming).
  */
 data class RobotStatus(
@@ -70,7 +118,9 @@ data class RobotStatus(
     @SerializedName("tag_y") val tagY: Double? = null,
     @SerializedName("tag_ori") val tagOri: Double? = null,
     @SerializedName("tag_vel") val tagVel: Double? = null,
-    @SerializedName("tag_yaw_rate") val tagYawRate: Double? = null
+    @SerializedName("tag_yaw_rate") val tagYawRate: Double? = null,
+    @SerializedName("calibration_complete") val calibrationComplete: Boolean? = null,
+    @SerializedName("path_selected") val pathSelected: Boolean? = null
 )
 
 /**

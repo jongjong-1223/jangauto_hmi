@@ -23,39 +23,82 @@
             android:orientation="vertical"
             android:padding="16dp">
 
+            <TextView android:id="@+id/tvGpathStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Coverage Path Generation" android:textSize="14sp" android:textStyle="bold" android:paddingTop="8dp" android:textColor="@color/uos_blue" />
+
+            <!-- Path Parameters -->
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="400dp"
-                android:orientation="vertical">
-                <com.example.hmi.MapView android:id="@+id/mapViewFull" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:background="#FFFFFF" android:layout_marginBottom="4dp" />
-                <com.example.hmi.MapView android:id="@+id/mapViewZoom" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:background="#FFFFFF" />
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="8dp">
+
+                <!-- Robot Radius -->
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="8dp">
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1.2" android:orientation="vertical">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Robot Radius (m)" android:textSize="11sp" android:textStyle="bold" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="로봇의 물리적 반경" android:textSize="9sp" android:textColor="@color/text_secondary" />
+                    </LinearLayout>
+                    <EditText android:id="@+id/etRobotRadius" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:inputType="numberDecimal" android:text="1.1" android:textSize="13sp" android:background="@android:drawable/edit_text" android:padding="8dp" />
+                </LinearLayout>
+
+                <!-- Ridge Spacing -->
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="8dp">
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1.2" android:orientation="vertical">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Ridge Spacing (m)" android:textSize="11sp" android:textStyle="bold" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="이랑 사이의 간격" android:textSize="9sp" android:textColor="@color/text_secondary" />
+                    </LinearLayout>
+                    <EditText android:id="@+id/etRidgeSpacing" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:inputType="numberDecimal" android:text="0.8" android:textSize="13sp" android:background="@android:drawable/edit_text" android:padding="8dp" />
+                </LinearLayout>
+
+                <!-- Headland Length -->
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="8dp">
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1.2" android:orientation="vertical">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Headland Len (m)" android:textSize="11sp" android:textStyle="bold" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="작업영역 양단의 로봇이동영역 너비" android:textSize="9sp" android:textColor="@color/text_secondary" />
+                    </LinearLayout>
+                    <EditText android:id="@+id/etHeadlandLen" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:inputType="numberDecimal" android:text="2.0" android:textSize="13sp" android:background="@android:drawable/edit_text" android:padding="8dp" />
+                </LinearLayout>
+
+                <!-- Ridge Yaw -->
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="8dp">
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1.2" android:orientation="vertical">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Ridge Yaw (deg)" android:textSize="11sp" android:textStyle="bold" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="작업 영역의 방향(각도)" android:textSize="9sp" android:textColor="@color/text_secondary" />
+                    </LinearLayout>
+                    <EditText android:id="@+id/etRidgeYaw" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:inputType="numberDecimal|numberSigned" android:text="0.0" android:textSize="13sp" android:background="@android:drawable/edit_text" android:padding="8dp" />
+                </LinearLayout>
             </LinearLayout>
 
-            <TextView android:id="@+id/tvGpathStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Waiting for data..." android:textSize="11sp" android:paddingTop="4dp" />
+            <Button android:id="@+id/btnResetDefaults" style="@style/Widget.Material3.Button.TextButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="기본값 복원" android:textSize="10sp" android:layout_gravity="end" />
 
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginTop="8dp">
-                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Min X" android:textSize="11sp" />
-                <EditText android:id="@+id/etMapMinX" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1.5" android:inputType="numberDecimal|numberSigned" android:text="-10.0" android:textSize="12sp" />
-                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:text="Max X" android:textSize="11sp" android:layout_weight="1" />
-                <EditText android:id="@+id/etMapMaxX" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1.5" android:inputType="numberDecimal|numberSigned" android:text="10.0" android:textSize="12sp" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Edge Safety Distances (m)" android:textSize="11sp" android:textStyle="bold" android:layout_marginTop="8dp" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="각 경계면(벽)으로부터의 안전거리(유효 맵)" android:textSize="9sp" android:textColor="@color/text_secondary" />
+
+            <LinearLayout
+                android:id="@+id/layoutSafetyDistances"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="4dp"
+                android:padding="4dp"
+                android:background="#10000000">
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Waiting for map data..." android:textSize="10sp" android:textColor="@color/text_secondary" android:gravity="center" android:padding="12dp" />
             </LinearLayout>
 
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Top Y" android:textSize="11sp" />
-                <EditText android:id="@+id/etMapTopY" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1.5" android:inputType="numberDecimal|numberSigned" android:text="10.0" android:textSize="12sp" />
-                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:text="Bot Y" android:textSize="11sp" android:layout_weight="1" />
-                <EditText android:id="@+id/etMapBottomY" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1.5" android:inputType="numberDecimal|numberSigned" android:text="-10.0" android:textSize="12sp" />
-            </LinearLayout>
+            <Button android:id="@+id/btnGenerateCoverage" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Generate Coverage Path" android:backgroundTint="#1565C0" android:textColor="#FFFFFF" android:layout_marginTop="12dp" />
 
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Field T-Y" android:textSize="11sp" />
-                <EditText android:id="@+id/etFieldTopY" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1.5" android:inputType="numberDecimal|numberSigned" android:text="8.0" android:textSize="12sp" />
-                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:text="Field B-Y" android:textSize="11sp" android:layout_weight="1" />
-                <EditText android:id="@+id/etFieldBottomY" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1.5" android:inputType="numberDecimal|numberSigned" android:text="-8.0" android:textSize="12sp" />
-            </LinearLayout>
+            <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/border_gray" android:layout_marginVertical="12dp" />
 
-            <EditText android:id="@+id/etCropX" android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="text" android:text="-6.6 -3.3 0 3.3 6.6" android:textSize="12sp" android:hint="Crop X coords" />
-            <Button android:id="@+id/btnGenerate" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Generate Path" android:backgroundTint="#1565C0" android:textColor="#FFFFFF" android:layout_marginTop="12dp" />
+            <TextView android:id="@+id/tvResultsInfo" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Candidate Results:" android:textSize="12sp" android:textStyle="bold" android:visibility="gone" />
+
+            <LinearLayout
+                android:id="@+id/layoutCandidates"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+                <!-- Individual Path Cards will be added here -->
+            </LinearLayout>
         </LinearLayout>
     </ScrollView>
 </androidx.constraintlayout.widget.ConstraintLayout>

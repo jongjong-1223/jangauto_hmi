@@ -14,6 +14,8 @@ class ControlFragment : Fragment() {
 
     private lateinit var tvCurrentState: TextView
     private lateinit var tvRequestedState: TextView
+    private lateinit var tvCalibrationStatus: TextView
+    private lateinit var tvPathStatus: TextView
     private lateinit var etTargetX: EditText
     private lateinit var etTargetY: EditText
     private lateinit var mapZoom: MapView
@@ -54,6 +56,8 @@ class ControlFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         tvCurrentState = view.findViewById(R.id.tvCurrentState)
         tvRequestedState = view.findViewById(R.id.tvRequestedState)
+        tvCalibrationStatus = view.findViewById(R.id.tvCalibrationStatus)
+        tvPathStatus = view.findViewById(R.id.tvPathStatus)
         etTargetX = view.findViewById(R.id.etTargetX)
         etTargetY = view.findViewById(R.id.etTargetY)
         mapZoom = view.findViewById(R.id.mapViewZoom)
@@ -174,6 +178,22 @@ class ControlFragment : Fragment() {
         tvCurrentState.text = getString(R.string.state_format, state)
         tvCurrentState.setTextColor(if (CommandState.inError) Color.RED else Color.BLACK)
         tvRequestedState.text = getString(R.string.requesting_format, CommandState.bitsToStateName(CommandState.requestedSwBits))
+        
+        // Calibration Status
+        val isCalOk = CommandState.isCalibrationComplete
+        tvCalibrationStatus.text = if (isCalOk) "Calibration: OK" else "Calibration: REQUIRED"
+        tvCalibrationStatus.setTextColor(if (isCalOk) Color.parseColor("#2E7D32") else Color.RED)
+        
+        val isPathOk = CommandState.isPathSelected
+        tvPathStatus.text = if (isPathOk) "Coverage: READY" else "Coverage: NOT SELECTED"
+        tvPathStatus.setTextColor(if (isPathOk) Color.parseColor("#2E7D32") else Color.RED)
+
+        val btnMove = view?.findViewById<Button>(R.id.btnMove)
+        btnMove?.isEnabled = isCalOk
+        
+        val isPathReady = CommandState.isPathSelected
+        val btnRun = view?.findViewById<Button>(R.id.btnRun)
+        btnRun?.isEnabled = isPathReady
         
         val buttons = mapOf(R.id.btnStop to "STOP", R.id.btnKey to "KEY", R.id.btnCali to "CAL", R.id.btnAlign to "ALIGN", R.id.btnRun to "RUN")
         buttons.forEach { (id, name) ->

@@ -44,6 +44,23 @@
 #### C. 명령형 요청 (Command Requests)
 - `move`, `poweroff`, `generate_path` 등은 고유한 `msg_id`와 함께 전송됩니다.
 
+#### D. Coverage Path (ㄹ자 경로) 생성 및 선택
+- **GenerateCoveragePathRequest**: 다각형 영역을 기반으로 ㄹ자 경로 생성을 요청합니다.
+```json
+{
+  "msg_id": "unique_id",
+  "command": "generate_coverage_path",
+  "polygon": [{"x": 1.0, "y": 1.0}, ...],
+  "edge_safety_dist": [0.5, 0.5, 0.5, 0.5], // 각 선분별 안전 거리 (리스트)
+  "robot_radius": 1.1,
+  "ridge_spacing": 0.8,
+  "headland_length": 2.0,
+  "yaw_deg": 0.0
+}
+```
+- **CoveragePathResult**: 로봇으로부터 두 개의 경로 후보(Left/Right start)를 수신합니다.
+- **SelectCoveragePathRequest**: 제안된 경로 중 하나를 인덱스(0, 1)로 선택합니다.
+
 ---
 
 ### 2.2 하향 링크 (Robot -> App)
@@ -60,7 +77,9 @@
   "tag_y": 0.0,             // 로봇 현재 위치 (Global Y)
   "tag_ori": 0.0,           // 로봇 헤딩 (Degree)
   "tag_vel": 0.0,           // 현재 속도 (m/s)
-  "tag_yaw_rate": 0.0       // 현재 회전 속도 (rad/s)
+  "tag_yaw_rate": 0.0,      // 현재 회전 속도 (rad/s)
+  "calibration_complete": false, // 보정 완료 여부
+  "path_selected": false    // ㄹ자 경로 선택 여부
 }
 ```
 
@@ -90,6 +109,10 @@
 - 사용자가 상태 전환을 요청하면 앱은 `Requesting: [STATE]`를 표시합니다.
 - **2초** 내에 로봇으로부터 해당 상태가 반영된 `RobotStatus`를 받지 못하면, 앱은 요청이 실패한 것으로 간주하고 `Requesting` 상태를 로봇의 실제 현재 상태로 리셋합니다.
 
+### 3.3 보정 및 경로 상태에 따른 동작 제한
+- `calibration_complete`가 `false`인 경우, 로봇은 `move` 명령을 수락하지 않으며 앱의 `MOVE` 버튼이 비활성화됩니다.
+- `path_selected`가 `false`인 경우, 앱의 `RUN` 버튼이 비활성화되어 경로 없는 자동 주행을 방지합니다.
+
 ---
 
 ## 4. 변경 이력 (History)
@@ -99,3 +122,8 @@
     - 맵 데이터 키 변경 (`anchors` -> `map`, `walls` -> `obstacles`).
     - 타임스탬프 기반 핑 측정 제거 및 `ControlAck` 메시지 폐기.
     - 앱 측 상태 요청 타임아웃(2초) 로직 명시.
+- **v1.2**:
+    - `RobotStatus`에 `calibration_complete` 및 `path_selected` 필드 추가.
+    - 보정 미완료 시 `move` 제한, 경로 미선택 시 `RUN` 제한 정책 추가.
+    - Coverage Path (ㄹ자 경로) 생성 및 선택 프로토콜 추가.
+    - `edge_safety_dist`를 단일 값에서 리스트(선분별 설정)로 변경.

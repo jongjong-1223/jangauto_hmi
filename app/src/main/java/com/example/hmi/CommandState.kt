@@ -18,15 +18,31 @@ object CommandState {
     @Volatile var speedBits = 0b010
     @Volatile var isVideoOn = false
     @Volatile var isSafeMode = false
+    @Volatile var isCalibrationComplete = false
+    @Volatile var isPathSelected = false
+
+    // Path Parameters Cache
+    @Volatile var robotRadius = 1.1
+    @Volatile var ridgeSpacing = 0.8
+    @Volatile var headlandLen = 2.0
+    @Volatile var ridgeYaw = 0.0
+    @Volatile var lastSafetyDistances = mutableMapOf<Int, Double>()
 
     @Volatile var inError = false
     @Volatile var errorReason = ""
 
     @Volatile var lastMapData: com.example.hmi.model.MapData? = null
+    @Volatile var lastGeneratedPaths: List<com.example.hmi.model.CoveragePath>? = null
+    @Volatile var lastResultMsgId: String? = null
 
     // Shared Movement History
     private val history = mutableListOf<MapView.Pt>()
     private const val MAX_HISTORY = 100
+
+    // Velocity History for Graph (last 90 seconds)
+    data class VelocityPoint(val timeMs: Long, val linearVel: Float, val angularVel: Float)
+    private val velocityHistory = mutableListOf<VelocityPoint>()
+    private const val MAX_GRAPH_TIME_MS = 90_000L
 
     fun addHistory(pt: MapView.Pt) {
         synchronized(history) {
@@ -35,8 +51,20 @@ object CommandState {
         }
     }
 
+    fun addVelocityData(linear: Float, angular: Float) {
+        val now = System.currentTimeMillis()
+        synchronized(velocityHistory) {
+            velocityHistory.add(VelocityPoint(now, linear, angular))
+            // Remove points older than 90 seconds
+            velocityHistory.removeAll { now - it.timeMs > MAX_GRAPH_TIME_MS }
+        }
+    }
+
     fun getHistory(): List<MapView.Pt> = synchronized(history) { history.toList() }
     fun clearHistory() = synchronized(history) { history.clear() }
+
+    fun getVelocityHistory(): List<VelocityPoint> = synchronized(velocityHistory) { velocityHistory.toList() }
+    fun clearVelocityHistory() = synchronized(velocityHistory) { velocityHistory.clear() }
 
     /**
      * Resets all shared states to default values.
@@ -49,10 +77,23 @@ object CommandState {
         speedBits = 0b010
         isVideoOn = false
         isSafeMode = false
+        isCalibrationComplete = false
+        isPathSelected = false
+        
+        // Reset Path Params to Defaults
+        robotRadius = 1.1
+        ridgeSpacing = 0.8
+        headlandLen = 2.0
+        ridgeYaw = 0.0
+        lastSafetyDistances.clear()
+
         inError = false
         errorReason = ""
         lastMapData = null
+        lastGeneratedPaths = null
+        lastResultMsgId = null
         clearHistory()
+        clearVelocityHistory()
         AppLogger.clear()
     }
 

@@ -50,6 +50,22 @@
                 android:text="Requesting: STOP"
                 android:textSize="11sp"
                 android:textColor="@color/text_secondary" />
+            <TextView
+                android:id="@+id/tvCalibrationStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Calibration: REQUIRED"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="@color/accent_red" />
+            <TextView
+                android:id="@+id/tvPathStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Coverage: NOT SELECTED"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="@color/accent_red" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 

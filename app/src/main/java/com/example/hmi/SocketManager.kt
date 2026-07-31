@@ -60,6 +60,7 @@ object SocketManager {
     private var feedbackListener: ((String) -> Unit)? = null
     private val mapDataListeners = mutableListOf<(MapData) -> Unit>()
     private val robotStatusListeners = mutableListOf<(RobotStatus) -> Unit>()
+    private val coveragePathListeners = mutableListOf<(CoveragePathResult) -> Unit>()
 
     fun setFeedbackListener(l: ((String) -> Unit)?) { feedbackListener = l }
     
@@ -68,6 +69,9 @@ object SocketManager {
     
     fun addRobotStatusListener(l: (RobotStatus) -> Unit) { synchronized(robotStatusListeners) { robotStatusListeners.add(l) } }
     fun removeRobotStatusListener(l: (RobotStatus) -> Unit) { synchronized(robotStatusListeners) { robotStatusListeners.remove(l) } }
+
+    fun addCoveragePathListener(l: (CoveragePathResult) -> Unit) { synchronized(coveragePathListeners) { coveragePathListeners.add(l) } }
+    fun removeCoveragePathListener(l: (CoveragePathResult) -> Unit) { synchronized(coveragePathListeners) { coveragePathListeners.remove(l) } }
 
     fun updateHost(newHost: String, newPort: Int) {
         if (Config.HOST == newHost && Config.PORT == newPort && isStarted && webSocket != null) return
@@ -146,11 +150,30 @@ object SocketManager {
 
                 if (CommandState.currentState != status.state || CommandState.inError != status.inError) {
                     AppLogger.rx("Current State from Robot: ${status.state}, Error=${status.inError}")
+                    // Clear velocity history if transitioning to CAL
+                    if (status.state.uppercase() == "CAL" || status.state.uppercase() == "CALI") {
+                        CommandState.clearVelocityHistory()
+                    }
+                }
+
+                // Detect Calibration Completion transition
+                val wasCalComplete = CommandState.isCalibrationComplete
+                val isNowCalComplete = status.calibrationComplete ?: false
+                if (!wasCalComplete && isNowCalComplete) {
+                    AppLogger.log("Calibration Completed! Resetting graph data.")
+                    CommandState.clearVelocityHistory()
                 }
                 
                 CommandState.currentState = status.state
                 CommandState.inError = status.inError
                 CommandState.errorReason = status.errorReason ?: ""
+                CommandState.isCalibrationComplete = isNowCalComplete
+                CommandState.isPathSelected = status.pathSelected ?: false
+                
+                // Add to Velocity History
+                status.tagVel?.let { v -> status.tagYawRate?.let { w ->
+                    CommandState.addVelocityData(v.toFloat(), w.toFloat())
+                }}
                 
                 synchronized(robotStatusListeners) {
                     robotStatusListeners.forEach { it.invoke(status) }
@@ -171,7 +194,23 @@ object SocketManager {
                 }
             }
 
-            // 4. Move Ack
+            // 4. Coverage Path Result (Reliable - Requires App Ack or Selection)
+            if (json.optString("type") == "coverage_path_result") {
+                val result = gson.fromJson(text, CoveragePathResult::class.java)
+                AppLogger.rx("Coverage Path Result Received [ID: ${result.msgId}]")
+                
+                CommandState.lastGeneratedPaths = result.paths
+                CommandState.lastResultMsgId = result.msgId
+                
+                // Send Ack to robot
+                send(AppAck(msgId = result.msgId))
+                
+                synchronized(coveragePathListeners) {
+                    coveragePathListeners.forEach { it.invoke(result) }
+                }
+            }
+
+            // 5. Move Ack
             if (json.optString("type") == "move_ack") {
                 val ack = gson.fromJson(text, MoveAck::class.java)
                 AppLogger.rx("Move Ack: Accepted=${ack.accepted}")
@@ -199,6 +238,14 @@ object SocketManager {
             is MoveRequest -> {
                 AppLogger.tx("Move Request: (${request.x}, ${request.y}) [ID: ${request.msgId}]")
                 enqueueRetry(request.msgId, json, "move")
+            }
+            is GenerateCoveragePathRequest -> {
+                AppLogger.tx("Generate Coverage Path [ID: ${request.msgId}]")
+                enqueueRetry(request.msgId, json, "gen_cov_path")
+            }
+            is SelectCoveragePathRequest -> {
+                AppLogger.tx("Select Path Index: ${request.pathIndex} [ID: ${request.msgId}]")
+                enqueueRetry(request.msgId, json, "select_path")
             }
             is PoweroffRequest -> {
                 AppLogger.tx("Poweroff Request [ID: ${request.msgId}]")

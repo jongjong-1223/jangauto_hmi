@@ -109,9 +109,9 @@ class MainActivity : AppCompatActivity() {
 
     fun setupTopBar(root: View) {
         val topBar = root.findViewById<View>(R.id.topBar)
-        val bottomArea = root.findViewById(R.id.bottomControl) 
+        val bottomArea = root.findViewById<View>(R.id.bottomControl) 
             ?: root.findViewById<View>(R.id.gpathContainer)
-            ?: root.findViewById<View>(R.id.graphContainer)
+            ?: root.findViewById<View>(R.id.rangeControlArea)
 
         ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())

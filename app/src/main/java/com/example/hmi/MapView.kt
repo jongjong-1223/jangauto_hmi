@@ -16,7 +16,10 @@ class MapView @JvmOverloads constructor(
     private var mapPoints: List<Pt> = emptyList()
     private var obstacles: List<List<Pt>> = emptyList()
     private var path: List<Pt> = emptyList()
+    private var coveragePaths: List<com.example.hmi.model.CoveragePath> = emptyList()
+    private var selectedPathIndex: Int = -1
     private var history: List<Pt> = emptyList()
+    private var singleCoveragePath: com.example.hmi.model.CoveragePath? = null
     private var tag: Pt? = null
     private var tagOri = 0f
     private var tagVel = 0f
@@ -32,12 +35,22 @@ class MapView @JvmOverloads constructor(
     private val pathPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#0077C8"); style = Paint.Style.STROKE; strokeWidth = 4f
     }
+    private val workPathPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#1B5E20"); style = Paint.Style.STROKE; strokeWidth = 6f // Dark Green for work
+    }
+    private val turnPathPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#81C784"); style = Paint.Style.STROKE; strokeWidth = 4f
+        pathEffect = DashPathEffect(floatArrayOf(10f, 5f), 0f)
+    }
+    private val candidatePathPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#BDBDBD"); style = Paint.Style.STROKE; strokeWidth = 3f
+    }
     private val historyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#ADB5BD"); style = Paint.Style.STROKE; strokeWidth = 2f
+        color = Color.parseColor("#D32F2F"); style = Paint.Style.STROKE; strokeWidth = 2f
         pathEffect = DashPathEffect(floatArrayOf(8f, 8f), 0f)
     }
     private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#E9ECEF"); style = Paint.Style.STROKE; strokeWidth = 1f
+        color = Color.parseColor("#CED4DA"); style = Paint.Style.STROKE; strokeWidth = 1f
     }
     private val tagPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#005EB8"); style = Paint.Style.FILL
@@ -46,10 +59,25 @@ class MapView @JvmOverloads constructor(
         color = Color.parseColor("#D32F2F"); style = Paint.Style.STROKE; strokeWidth = 4f
     }
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#495057"); textSize = 24f; typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        color = Color.parseColor("#495057"); textSize = 48f; typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
     }
     private val robotInfoPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#005EB8"); textSize = 20f; typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+        color = Color.parseColor("#005EB8"); textSize = 40f; typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+    }
+    private val scalePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.BLACK; style = Paint.Style.STROKE; strokeWidth = 3f
+    }
+    private val axisPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE; strokeWidth = 4f; strokeCap = Paint.Cap.ROUND
+    }
+    private val startPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#4CAF50"); style = Paint.Style.FILL // Green
+    }
+    private val endPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#F44336"); style = Paint.Style.FILL // Red
+    }
+    private val headlandPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#20FFEB3B"); style = Paint.Style.FILL // Very translucent Yellow
     }
 
     private val robotPath = Path()
@@ -62,6 +90,19 @@ class MapView @JvmOverloads constructor(
         invalidate()
     }
 
+    fun setCoveragePaths(paths: List<com.example.hmi.model.CoveragePath>, selectedIndex: Int) {
+        this.coveragePaths = paths
+        this.selectedPathIndex = selectedIndex
+        this.singleCoveragePath = null
+        invalidate()
+    }
+
+    fun setSingleCoveragePath(path: com.example.hmi.model.CoveragePath?) {
+        this.singleCoveragePath = path
+        this.coveragePaths = emptyList()
+        invalidate()
+    }
+
     fun setRobotState(tag: Pt?, ori: Float, vel: Float, yawRate: Float, history: List<Pt>, hasTag: Boolean) {
         this.tag = tag; this.tagOri = ori; this.tagVel = vel; this.tagYawRate = yawRate; this.history = history; this.hasTag = hasTag
         invalidate()
@@ -71,60 +112,50 @@ class MapView @JvmOverloads constructor(
         super.onDraw(canvas)
         canvas.drawColor(Color.parseColor("#F8F9FA")) // Off-white/Gray surface
 
-        val currentTag = tag
-        if (!hasTag || currentTag == null) return
+        // 1. Calculate Bounds
+        val currentTag = if (hasTag) tag else null
+        
+        val allPointsForBounds = mutableListOf<Pt>()
+        allPointsForBounds.addAll(mapPoints)
+        obstacles.forEach { allPointsForBounds.addAll(it) }
+        allPointsForBounds.addAll(path)
+        currentTag?.let { allPointsForBounds.add(it) }
+        coveragePaths.forEach { cp -> allPointsForBounds.addAll(cp.waypoints.map { Pt(it.x.toFloat(), it.y.toFloat()) }) }
+        singleCoveragePath?.let { cp -> allPointsForBounds.addAll(cp.waypoints.map { Pt(it.x.toFloat(), it.y.toFloat()) }) }
 
-        val pad = 40f
+        if (allPointsForBounds.isEmpty() && currentTag == null) return
+
+        val pad = 120f
         val w = width - 2 * pad
         val h = height - 2 * pad
         
-        // Robot coordinate system: X is UP, Y is LEFT
-        // Canvas: X is Right, Y is Down
-        // So: Canvas X corresponds to Robot -Y, Canvas Y corresponds to Robot -X
-        
-        val minX: Float
-        val maxX: Float
-        val minY: Float
-        val maxY: Float
-        val scale: Float
-        val offX: Float
-        val offY: Float
+        val minX: Float; val maxX: Float; val minY: Float; val maxY: Float
+        val scale: Float; val offX: Float; val offY: Float
 
-        if (isZoomMode) {
-            val zoomSize = 8f
-            // In Robot frame
-            minX = tag!!.x - zoomSize/2f
-            maxX = tag!!.x + zoomSize/2f
-            minY = tag!!.y - zoomSize/2f
-            maxY = tag!!.y + zoomSize/2f
+        if (isZoomMode && currentTag != null) {
+            val zoomSize = 5f
+            minX = currentTag.x - zoomSize/2f; maxX = currentTag.x + zoomSize/2f
+            minY = currentTag.y - zoomSize/2f; maxY = currentTag.y + zoomSize/2f
             scale = minOf(w / zoomSize, h / zoomSize)
         } else {
-            val allPts = mapPoints + obstacles.flatten() + path + tag!!
-            minX = (allPts.minOfOrNull { it.x } ?: -2f) - 1f
-            maxX = (allPts.maxOfOrNull { it.x } ?: 2f) + 1f
-            minY = (allPts.minOfOrNull { it.y } ?: -2f) - 1f
-            maxY = (allPts.maxOfOrNull { it.y } ?: 2f) + 1f
-            val rangeX = maxX - minX
-            val rangeY = maxY - minY
-            scale = minOf(w / rangeY, h / rangeX) // Swapped range because of orientation
+            val buffer = 3f
+            minX = (allPointsForBounds.minOfOrNull { it.x } ?: -2f) - buffer
+            maxX = (allPointsForBounds.maxOfOrNull { it.x } ?: 2f) + buffer
+            minY = (allPointsForBounds.minOfOrNull { it.y } ?: -2f) - buffer
+            maxY = (allPointsForBounds.maxOfOrNull { it.y } ?: 2f) + buffer
+            val rangeX = maxX - minX; val rangeY = maxY - minY
+            scale = if (rangeX > 0 && rangeY > 0) minOf(w / rangeY, h / rangeX) else 10f
         }
 
-        // Translation to center
         offX = pad + (w - scale * (maxY - minY)) / 2f
         offY = pad + (h - scale * (maxX - minX)) / 2f
         
-        // Transform functions:
-        // sx maps Robot Y to Canvas X (Y_robot + -> Canvas Left -> X_canvas decreases)
-        // Robot Y max -> Canvas Left, Robot Y min -> Canvas Right
         fun sx(y: Float) = offX + (maxY - y) * scale
-        // sy maps Robot X to Canvas Y (X_robot + -> Canvas Top -> Y_canvas decreases)
-        // Robot X max -> Canvas Top, Robot X min -> Canvas Bottom
         fun sy(x: Float) = offY + (maxX - x) * scale
 
-        // Draw Grids
-        drawGrids(canvas, minX, maxX, minY, maxY, ::sx, ::sy)
+        // 2. Draw Layers
+        drawGrids(canvas, minX, maxX, minY, maxY, getGridStep(minX, maxX, minY, maxY), ::sx, ::sy)
 
-        // Draw History
         if (history.size >= 2) {
             trailPath.reset()
             trailPath.moveTo(sx(history[0].y), sy(history[0].x))
@@ -134,60 +165,113 @@ class MapView @JvmOverloads constructor(
         
         if (path.size >= 2) for (i in 0 until path.size - 1) canvas.drawLine(sx(path[i].y), sy(path[i].x), sx(path[i+1].y), sy(path[i+1].x), pathPaint)
         
+        drawCoveragePaths(canvas, ::sx, ::sy)
+        drawSingleCoveragePath(canvas, ::sx, ::sy)
+
         for (obs in obstacles) {
             if (obs.size < 2) continue
-            for (i in 0 until obs.size - 1) canvas.drawLine(sx(obs[i].y), sy(obs[i].x), sx(obs[i+1].y), sy(obs[i+1].x), obstaclePaint)
+            for (i in obs.indices) {
+                val p1 = obs[i]; val p2 = obs[(i + 1) % obs.size]
+                canvas.drawLine(sx(p1.y), sy(p1.x), sx(p2.y), sy(p2.x), obstaclePaint)
+            }
         }
 
-        // Map Loop
         if (mapPoints.isNotEmpty()) {
             for (i in mapPoints.indices) {
-                val p1 = mapPoints[i]
-                val p2 = mapPoints[(i + 1) % mapPoints.size]
+                val p1 = mapPoints[i]; val p2 = mapPoints[(i + 1) % mapPoints.size]
                 canvas.drawLine(sx(p1.y), sy(p1.x), sx(p2.y), sy(p2.x), mapPaint)
             }
         }
 
         for ((i, a) in mapPoints.withIndex()) {
-            canvas.drawCircle(sx(a.y), sy(a.x), 6f, mapPaint)
-            canvas.drawText("M${i+1}", sx(a.y) + 12f, sy(a.x) - 12f, textPaint)
+            val cx = sx(a.y); val cy = sy(a.x)
+            canvas.drawCircle(cx, cy, 6f, mapPaint)
+            canvas.drawText("M${i+1}", cx + 15f, cy - 15f, textPaint)
+            canvas.drawText("(${ "%.1f".format(a.x) }, ${ "%.1f".format(a.y) })", cx + 15f, cy + 35f, robotInfoPaint)
         }
 
-        // Draw Robot
-        canvas.save()
-        val tx = sx(currentTag.y); val ty = sy(currentTag.x)
-        canvas.translate(tx, ty)
-        // Orientation: Robot X is 0 deg (Up). 
-        // tagOri is CCW radian from X axis.
-        // Canvas rotate uses degrees CW. 
-        // So rotate by -Math.toDegrees(tagOri)
-        val deg = Math.toDegrees(tagOri.toDouble()).toFloat()
-        canvas.rotate(-deg)
-        
-        robotPath.reset()
-        // Define triangle pointing UP (in local frame where X is Up)
-        // Note: Canvas local frame after translate/rotate
-        robotPath.moveTo(0f, -22f) 
-        robotPath.lineTo(-16f, 18f)
-        robotPath.lineTo(16f, 18f)
-        robotPath.close()
-        canvas.drawPath(robotPath, tagPaint)
-        
-        if (tagVel > 0.05f) {
-            // Velocity vector line pointing UP
-            canvas.drawLine(0f, 0f, 0f, -tagVel * 60f, velPaint)
-        }
-        canvas.restore()
+        // 3. Draw Robot (Only if tag exists)
+        currentTag?.let { tag ->
+            canvas.save()
+            val tx = sx(tag.y); val ty = sy(tag.x)
+            canvas.translate(tx, ty)
+            val deg = Math.toDegrees(tagOri.toDouble()).toFloat()
+            canvas.rotate(-deg)
+            
+            robotPath.reset()
+            robotPath.moveTo(0f, -22f); robotPath.lineTo(-16f, 18f); robotPath.lineTo(16f, 18f); robotPath.close()
+            canvas.drawPath(robotPath, tagPaint)
+            
+            if (tagVel > 0.05f) canvas.drawLine(0f, 0f, 0f, -tagVel * 60f, velPaint)
+            canvas.restore()
 
-        // Robot Status Info
-        val infoX = tx + 35f
-        canvas.drawText("(${ "%.1f".format(currentTag.x) }, ${ "%.1f".format(currentTag.y) })", infoX, ty, textPaint)
-        canvas.drawText("${ "%.2f".format(tagVel) } m/s", infoX, ty + 30f, robotInfoPaint)
-        canvas.drawText("${ "%.1f".format(Math.toDegrees(tagYawRate.toDouble())) } deg/s", infoX, ty + 55f, robotInfoPaint)
+            val infoX = tx + 45f
+            canvas.drawText("(${ "%.1f".format(tag.x) }, ${ "%.1f".format(tag.y) })", infoX, ty, textPaint)
+            canvas.drawText("${ "%.2f".format(tagVel) } m/s", infoX, ty + 50f, robotInfoPaint)
+            canvas.drawText("${ "%.1f".format(Math.toDegrees(tagYawRate.toDouble())) } deg/s", infoX, ty + 90f, robotInfoPaint)
+        }
+
+        drawScaleAndAxis(canvas, scale, getGridStep(minX, maxX, minY, maxY))
     }
 
-    private fun drawGrids(canvas: Canvas, minX: Float, maxX: Float, minY: Float, maxY: Float, sx: (Float) -> Float, sy: (Float) -> Float) {
-        val step = if (isZoomMode) 1f else {
+    private fun drawScaleAndAxis(canvas: Canvas, scale: Float, step: Float) {
+        val margin = 140f
+        val bottomY = height - margin
+        val leftX = margin
+
+        // 1. Draw Scale (Dynamic based on step)
+        val barWidth = step * scale
+        canvas.drawLine(leftX, bottomY, leftX + barWidth, bottomY, scalePaint)
+        canvas.drawLine(leftX, bottomY - 10f, leftX, bottomY + 10f, scalePaint)
+        canvas.drawLine(leftX + barWidth, bottomY - 10f, leftX + barWidth, bottomY + 10f, scalePaint)
+        
+        val label = if (step >= 1f) "${step.toInt()}m" else "${ "%.1f".format(step) }m"
+        canvas.drawText(label, leftX + barWidth / 2f - 30f, bottomY - 15f, robotInfoPaint)
+
+        // 2. Draw 2D Axis Arrows (X up, Y left)
+        val axisLen = 80f
+        val axisOriginX = leftX + 50f
+        val axisOriginY = bottomY - 80f
+        
+        // X-axis (Red, pointing UP on screen)
+        axisPaint.color = Color.RED
+        drawArrow(canvas, axisOriginX, axisOriginY, axisOriginX, axisOriginY - axisLen, axisPaint)
+        canvas.drawText("X", axisOriginX - 10f, axisOriginY - axisLen - 15f, robotInfoPaint)
+        
+        // Y-axis (Green, pointing LEFT on screen)
+        axisPaint.color = Color.parseColor("#2E7D32")
+        drawArrow(canvas, axisOriginX, axisOriginY, axisOriginX - axisLen, axisOriginY, axisPaint)
+        canvas.drawText("Y", axisOriginX - axisLen - 35f, axisOriginY + 10f, robotInfoPaint)
+    }
+
+    private fun drawArrow(canvas: Canvas, x1: Float, y1: Float, x2: Float, y2: Float, paint: Paint) {
+        // Draw the main line
+        canvas.drawLine(x1, y1, x2, y2, paint)
+
+        // Calculate arrow head points
+        val angle = Math.atan2((y2 - y1).toDouble(), (x2 - x1).toDouble())
+        val headLen = 15f
+        val headAngle = Math.PI / 6 // 30 degrees
+        
+        val x3 = (x2 - headLen * Math.cos(angle - headAngle)).toFloat()
+        val y3 = (y2 - headLen * Math.sin(angle - headAngle)).toFloat()
+        val x4 = (x2 - headLen * Math.cos(angle + headAngle)).toFloat()
+        val y4 = (y2 - headLen * Math.sin(angle + headAngle)).toFloat()
+
+        val arrowPath = Path()
+        arrowPath.moveTo(x2, y2)
+        arrowPath.lineTo(x3, y3)
+        arrowPath.lineTo(x4, y4)
+        arrowPath.close()
+        
+        val prevStyle = paint.style
+        paint.style = Paint.Style.FILL
+        canvas.drawPath(arrowPath, paint)
+        paint.style = prevStyle
+    }
+
+    private fun getGridStep(minX: Float, maxX: Float, minY: Float, maxY: Float): Float {
+        return if (isZoomMode) 1f else {
             val range = maxOf(maxX - minX, maxY - minY)
             when {
                 range < 10f -> 1f
@@ -195,7 +279,9 @@ class MapView @JvmOverloads constructor(
                 else -> 10f
             }
         }
-        
+    }
+
+    private fun drawGrids(canvas: Canvas, minX: Float, maxX: Float, minY: Float, maxY: Float, step: Float, sx: (Float) -> Float, sy: (Float) -> Float) {
         // Vertical lines (constant Robot Y)
         var yStart = (kotlin.math.ceil(minY.toDouble() / step) * step).toFloat()
         while (yStart <= maxY) {
@@ -209,5 +295,41 @@ class MapView @JvmOverloads constructor(
             canvas.drawLine(sx(minY), sy(xStart), sx(maxY), sy(xStart), gridPaint)
             xStart += step
         }
+    }
+
+    private fun drawCoveragePaths(canvas: Canvas, sx: (Float) -> Float, sy: (Float) -> Float) {
+        coveragePaths.forEachIndexed { index, covPath ->
+            renderPathWithDetails(canvas, covPath, index == selectedPathIndex, sx, sy)
+        }
+    }
+
+    private fun drawSingleCoveragePath(canvas: Canvas, sx: (Float) -> Float, sy: (Float) -> Float) {
+        singleCoveragePath?.let { renderPathWithDetails(canvas, it, true, sx, sy) }
+    }
+
+    private fun renderPathWithDetails(canvas: Canvas, covPath: com.example.hmi.model.CoveragePath, isHighlighted: Boolean, sx: (Float) -> Float, sy: (Float) -> Float) {
+        val paint = if (isHighlighted) null else candidatePathPaint
+        val wpts = covPath.waypoints
+        if (wpts.size < 2) return
+
+        // Draw segments
+        for (i in 0 until wpts.size - 1) {
+            val p1 = wpts[i]; val p2 = wpts[i + 1]
+            val currentPaint = if (isHighlighted) {
+                if (p1.kind == "work_start" || p1.kind == "work_end") workPathPaint else turnPathPaint
+            } else paint!!
+            canvas.drawLine(sx(p1.y.toFloat()), sy(p1.x.toFloat()), sx(p2.y.toFloat()), sy(p2.x.toFloat()), currentPaint)
+            
+            // Draw headland areas (simple box around turn points)
+            if (isHighlighted && (p1.kind == "turn_out" || p1.kind == "turn_in")) {
+                canvas.drawCircle(sx(p1.y.toFloat()), sy(p1.x.toFloat()), 25f, headlandPaint)
+            }
+        }
+
+        // Draw Start/End Markers
+        val start = wpts.first()
+        val end = wpts.last()
+        canvas.drawCircle(sx(start.y.toFloat()), sy(start.x.toFloat()), 12f, startPaint)
+        canvas.drawCircle(sx(end.y.toFloat()), sy(end.x.toFloat()), 12f, endPaint)
     }
 }
