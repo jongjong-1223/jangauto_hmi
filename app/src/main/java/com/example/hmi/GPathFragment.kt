@@ -2,6 +2,7 @@ package com.example.hmi
 
 import android.graphics.Color
 import android.os.Bundle
+import android.util.Log
 import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
@@ -34,6 +35,7 @@ class GPathFragment : Fragment() {
     private val statusListener: (RobotStatus) -> Unit = { status ->
         activity?.runOnUiThread { 
             tvStatus.text = "Coverage: ${if (status.pathSelected == true) "READY" else "NOT SELECTED"}"
+            updateGating(status.state)
         }
     }
 
@@ -70,6 +72,21 @@ class GPathFragment : Fragment() {
         CommandState.lastMapData?.map?.let { updateSafetyDistanceInputs(it) }
     }
 
+    private fun updateGating(state: String) {
+        val isGated = state.uppercase() == "ALIGN" || state.uppercase() == "RUN"
+        val isEnabled = !isGated
+        
+        view?.findViewById<Button>(R.id.btnGenerateCoverage)?.isEnabled = isEnabled
+        view?.findViewById<Button>(R.id.btnResetDefaults)?.isEnabled = isEnabled
+        
+        // Gating for dynamic candidate buttons
+        for (i in 0 until layoutCandidates.childCount) {
+            val card = layoutCandidates.getChildAt(i) as? LinearLayout
+            val btn = card?.getChildAt(card.childCount - 1) as? Button
+            btn?.isEnabled = isEnabled
+        }
+    }
+
     private fun resetToDefaults() {
         CommandState.robotRadius = 1.1
         CommandState.ridgeSpacing = 0.8
@@ -77,7 +94,10 @@ class GPathFragment : Fragment() {
         CommandState.ridgeYaw = 0.0
         CommandState.lastSafetyDistances.clear()
         restoreValues()
-        CommandState.lastMapData?.map?.let { updateSafetyDistanceInputs(it) }
+        CommandState.lastMapData?.map?.let { 
+            lastMapPoints = null // Force redraw
+            updateSafetyDistanceInputs(it) 
+        }
         Toast.makeText(requireContext(), "Defaults Restored", Toast.LENGTH_SHORT).show()
     }
 
@@ -106,6 +126,8 @@ class GPathFragment : Fragment() {
 
     private fun updateSafetyDistanceInputs(map: List<Point>?) {
         if (map == null || map.isEmpty()) return
+        
+        // If map hasn't changed (points and count), don't reset inputs to preserve user focus and values
         if (map == lastMapPoints) return
         lastMapPoints = map
         
@@ -126,7 +148,11 @@ class GPathFragment : Fragment() {
                 tag = "safety_dist_$i"; setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                 inputType = 8194 // TYPE_CLASS_NUMBER | TYPE_NUMBER_FLAG_DECIMAL
                 background = AppCompatResources.getDrawable(context, android.R.drawable.edit_text)
-                setText(CommandState.lastSafetyDistances[i]?.toString() ?: "0.5")
+                
+                // Restore from cache if available, otherwise default to 0.5
+                val cached = CommandState.lastSafetyDistances[i]
+                setText(cached?.toString() ?: "0.5")
+                
                 layoutParams = LinearLayout.LayoutParams(0, -2, 1.0f)
             }
             row.addView(tv); row.addView(et); layoutSafetyDistances.addView(row)
@@ -197,12 +223,20 @@ class GPathFragment : Fragment() {
     }
 
     private fun selectPath(index: Int) {
+        val refId = CommandState.lastResultMsgId ?: ""
         val newMsgId = SocketManager.generateId()
+        
+        Log.d("GPath", "Selecting path $index with ref_msg_id: $refId")
+        
+        // Update local selection for UI reflection across screens
+        CommandState.selectedCoveragePath = CommandState.lastGeneratedPaths?.getOrNull(index)
+
         SocketManager.send(SelectCoveragePathRequest(
             msgId = newMsgId,
+            refMsgId = refId,
             pathIndex = index
         ))
-        Toast.makeText(requireContext(), "Selecting Path $index...", Toast.LENGTH_SHORT).show()
+        Toast.makeText(requireContext(), "Path $index selected. Syncing...", Toast.LENGTH_SHORT).show()
     }
 
     override fun onResume() {

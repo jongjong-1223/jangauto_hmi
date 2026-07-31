@@ -101,8 +101,8 @@ data class Waypoint(
  * Command to select one of the generated candidate paths.
  */
 data class SelectCoveragePathRequest(
-    @SerializedName("type") val type: String = "select_coverage_path",
     @SerializedName("msg_id") val msgId: String,
+    @SerializedName("ref_msg_id") val refMsgId: String,
     @SerializedName("command") val command: String = "select_coverage_path",
     @SerializedName("path_index") val pathIndex: Int
 ) : RobotRequest

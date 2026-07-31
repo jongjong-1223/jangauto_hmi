@@ -33,6 +33,7 @@ object CommandState {
 
     @Volatile var lastMapData: com.example.hmi.model.MapData? = null
     @Volatile var lastGeneratedPaths: List<com.example.hmi.model.CoveragePath>? = null
+    @Volatile var selectedCoveragePath: com.example.hmi.model.CoveragePath? = null
     @Volatile var lastResultMsgId: String? = null
 
     // Shared Movement History
@@ -91,6 +92,7 @@ object CommandState {
         errorReason = ""
         lastMapData = null
         lastGeneratedPaths = null
+        selectedCoveragePath = null
         lastResultMsgId = null
         clearHistory()
         clearVelocityHistory()

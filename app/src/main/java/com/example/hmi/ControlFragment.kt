@@ -112,6 +112,9 @@ class ControlFragment : Fragment() {
         val tx = status.tagX?.toFloat() ?: return
         val ty = status.tagY?.toFloat() ?: return
         val tag = MapView.Pt(tx, ty)
+        
+        mapZoom.setSingleCoveragePath(CommandState.selectedCoveragePath)
+        
         mapZoom.setRobotState(
             tag, 
             status.tagOri?.toFloat() ?: 0f, 

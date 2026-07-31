@@ -11,7 +11,7 @@ import java.util.concurrent.TimeUnit
 
 /**
  * Advanced Singleton manager for WebSocket communication.
- * Features: Structured Data (Gson), Retry Mechanism, Latency Monitoring, Hybrid Ack.
+ * Features: Structured Data (Gson), Retry Mechanism, Multi-Listener, Hybrid Ack.
  */
 object SocketManager {
     private const val TAG = "SocketManager"
@@ -38,6 +38,9 @@ object SocketManager {
 
     private var webSocket: WebSocket? = null
     private var isStarted = false
+    private var isConnecting = false
+
+    private val reconnectRunnable = Runnable { connect() }
 
     // State tracking for logs
     private var lastLoggedSwBits = -1
@@ -74,19 +77,28 @@ object SocketManager {
     fun removeCoveragePathListener(l: (CoveragePathResult) -> Unit) { synchronized(coveragePathListeners) { coveragePathListeners.remove(l) } }
 
     fun updateHost(newHost: String, newPort: Int) {
-        if (Config.HOST == newHost && Config.PORT == newPort && isStarted && webSocket != null) return
+        if (Config.HOST == newHost && Config.PORT == newPort && (webSocket != null || isConnecting)) return
         AppLogger.log("Socket: Updating host to $newHost:$newPort")
         Config.HOST = newHost
         Config.PORT = newPort
-        if (isStarted) { disconnectInternal(); connect() }
+        if (isStarted) {
+            disconnectInternal()
+            handler.removeCallbacks(reconnectRunnable)
+            handler.postDelayed(reconnectRunnable, 500) // Small delay to let socket cleanup
+        }
     }
 
-    fun start() { if (!isStarted) { isStarted = true; connect() } }
+    fun start() { 
+        if (!isStarted) { 
+            isStarted = true
+            connect() 
+        } 
+    }
     
     fun stop() {
         isStarted = false
-        webSocket?.close(1000, "App closed")
-        webSocket = null
+        handler.removeCallbacks(reconnectRunnable)
+        disconnectInternal()
         
         // Clear all pending retries
         pendingRequests.values.forEach { handler.removeCallbacks(it.runnable) }
@@ -100,29 +112,54 @@ object SocketManager {
         synchronized(robotStatusListeners) { robotStatusListeners.clear() }
     }
 
-    private fun disconnectInternal() { webSocket?.close(1000, "Changing host"); webSocket = null }
+    private fun disconnectInternal() { 
+        webSocket?.let { 
+            it.close(1000, "User logout/Host change")
+            AppLogger.log("Socket: Closing current connection")
+        }
+        webSocket = null
+        isConnecting = false
+    }
 
     private fun connect() {
-        val request = Request.Builder().url(Config.WS_URL).build()
-        webSocket = client.newWebSocket(request, object : WebSocketListener() {
-            override fun onOpen(webSocket: WebSocket, response: Response) {
+        if (!isStarted || webSocket != null || isConnecting) return
+        
+        isConnecting = true
+        val url = Config.WS_URL
+        AppLogger.log("Socket: Connecting to $url")
+        
+        val request = Request.Builder().url(url).build()
+        client.newWebSocket(request, object : WebSocketListener() {
+            override fun onOpen(ws: WebSocket, response: Response) {
+                isConnecting = false
+                webSocket = ws
                 val localInfo = if (localIp != null) "$localIp:$localPort" else "unknown"
                 AppLogger.log("Socket: Connected (Local: $localInfo -> Remote: ${Config.HOST}:${Config.PORT})")
             }
 
-            override fun onMessage(webSocket: WebSocket, text: String) {
-                handler.post {
-                    processRobotMessage(text)
+            override fun onMessage(ws: WebSocket, text: String) {
+                handler.post { processRobotMessage(text) }
+            }
+
+            override fun onClosing(ws: WebSocket, code: Int, reason: String) {
+                AppLogger.log("Socket: Closing ($reason)")
+                ws.close(1000, null)
+                if (ws === webSocket) {
+                    webSocket = null
                 }
             }
 
-            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-                AppLogger.log("Socket: Closing ($reason)")
-            }
-
-            override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                AppLogger.log("Socket: Connection failed")
-                handler.postDelayed({ if (isStarted) connect() }, Config.RECONNECT_DELAY_MS)
+            override fun onFailure(ws: WebSocket, t: Throwable, response: Response?) {
+                isConnecting = false
+                if (ws === webSocket) webSocket = null
+                
+                // Only log and retry if this failure belongs to the current expected connection
+                val errorMsg = t.message ?: "Unknown error"
+                if (!errorMsg.contains("Socket closed") && isStarted) {
+                    AppLogger.log("Socket: Connection failed - $errorMsg")
+                    handler.removeCallbacks(reconnectRunnable)
+                    handler.postDelayed(reconnectRunnable, Config.RECONNECT_DELAY_MS)
+                }
             }
         })
     }
@@ -183,7 +220,6 @@ object SocketManager {
             // 3. Map Data (Reliable - Requires App Ack)
             if (json.optString("type") == "map_data") {
                 val mapData = gson.fromJson(text, MapData::class.java)
-                
                 CommandState.lastMapData = mapData
 
                 // Send Ack to robot
@@ -263,6 +299,7 @@ object SocketManager {
     }
 
     private fun sendRaw(json: String) {
+        Log.d(TAG, ">>> Sending: $json")
         webSocket?.send(json) ?: Log.e(TAG, "Socket not connected")
     }
 

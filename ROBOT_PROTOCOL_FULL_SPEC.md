@@ -60,6 +60,14 @@
 ```
 - **CoveragePathResult**: 로봇으로부터 두 개의 경로 후보(Left/Right start)를 수신합니다.
 - **SelectCoveragePathRequest**: 제안된 경로 중 하나를 인덱스(0, 1)로 선택합니다.
+```json
+{
+  "msg_id": "unique_id_for_this_request",
+  "ref_msg_id": "msg_id_from_coverage_path_result",
+  "command": "select_coverage_path",
+  "path_index": 0
+}
+```
 
 ---
 
@@ -105,7 +113,11 @@
 3.  **RUN 진입**: 반드시 `ALIGN` 상태를 거쳐야만 `RUN`으로 갈 수 있습니다.
 4.  **하향 전환**: 상위 상태에서 하위 상태(예: `RUN` -> `STOP`)로의 이동은 언제나 허용됩니다.
 
-### 3.2 앱 측 타임아웃 처리
+### 3.2 경로 생성 및 선택 제한
+- `generate_coverage_path` 및 `select_coverage_path` 명령은 로봇이 **STOP**, **KEY**, **CAL** 상태일 때만 수락됩니다.
+- 로봇이 **ALIGN** 또는 **RUN** 상태인 경우, 앱은 관련 설정 버튼을 비활성화하여 오작동을 방지합니다.
+
+### 3.3 앱 측 타임아웃 처리
 - 사용자가 상태 전환을 요청하면 앱은 `Requesting: [STATE]`를 표시합니다.
 - **2초** 내에 로봇으로부터 해당 상태가 반영된 `RobotStatus`를 받지 못하면, 앱은 요청이 실패한 것으로 간주하고 `Requesting` 상태를 로봇의 실제 현재 상태로 리셋합니다.
 
@@ -127,3 +139,4 @@
     - 보정 미완료 시 `move` 제한, 경로 미선택 시 `RUN` 제한 정책 추가.
     - Coverage Path (ㄹ자 경로) 생성 및 선택 프로토콜 추가.
     - `edge_safety_dist`를 단일 값에서 리스트(선분별 설정)로 변경.
+    - `select_coverage_path` 명령에 `ref_msg_id` 필드 추가 및 상태 기반 가드(Gating) 적용.

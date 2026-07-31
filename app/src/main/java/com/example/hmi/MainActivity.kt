@@ -60,14 +60,17 @@ class MainActivity : AppCompatActivity() {
         }
 
         SocketManager.addRobotStatusListener { status ->
-            runOnUiThread { mapFullInDialog?.setRobotState(
-                tag = status.tagX?.let { x -> status.tagY?.let { y -> MapView.Pt(x.toFloat(), y.toFloat()) } },
-                ori = status.tagOri?.toFloat() ?: 0f,
-                vel = status.tagVel?.toFloat() ?: 0f,
-                yawRate = status.tagYawRate?.toFloat() ?: 0f,
-                history = CommandState.getHistory(),
-                hasTag = true
-            )}
+            runOnUiThread { 
+                mapFullInDialog?.setRobotState(
+                    tag = status.tagX?.let { x -> status.tagY?.let { y -> MapView.Pt(x.toFloat(), y.toFloat()) } },
+                    ori = status.tagOri?.toFloat() ?: 0f,
+                    vel = status.tagVel?.toFloat() ?: 0f,
+                    yawRate = status.tagYawRate?.toFloat() ?: 0f,
+                    history = CommandState.getHistory(),
+                    hasTag = true
+                )
+                mapFullInDialog?.setSingleCoveragePath(CommandState.selectedCoveragePath)
+            }
         }
         
         SocketManager.addMapDataListener { data ->
