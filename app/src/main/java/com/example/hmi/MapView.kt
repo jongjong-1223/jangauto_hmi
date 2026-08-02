@@ -34,19 +34,27 @@ class MapView @JvmOverloads constructor(
         color = Color.parseColor("#343A40"); style = Paint.Style.STROKE; strokeWidth = 5f; strokeCap = Paint.Cap.ROUND
     }
     private val pathPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#0077C8"); style = Paint.Style.STROKE; strokeWidth = 4f
+        color = Color.BLACK; style = Paint.Style.STROKE; strokeWidth = 4f
+        pathEffect = DashPathEffect(floatArrayOf(10f, 10f), 0f)
     }
     private val workPathPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#1B5E20"); style = Paint.Style.STROKE; strokeWidth = 6f // Dark Green for work
+        color = Color.BLACK; style = Paint.Style.STROKE; strokeWidth = 6f
+        pathEffect = DashPathEffect(floatArrayOf(12f, 8f), 0f)
     }
     private val turnPathPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#81C784"); style = Paint.Style.STROKE; strokeWidth = 4f
+        color = Color.BLACK; style = Paint.Style.STROKE; strokeWidth = 4f
+        pathEffect = DashPathEffect(floatArrayOf(8f, 12f), 0f)
     }
     private val candidatePathPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#BDBDBD"); style = Paint.Style.STROKE; strokeWidth = 3f
+        color = Color.parseColor("#757575"); style = Paint.Style.STROKE; strokeWidth = 3f
+        pathEffect = DashPathEffect(floatArrayOf(10f, 10f), 0f)
     }
     private val historyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#D32F2F"); style = Paint.Style.STROKE; strokeWidth = 2f
+        color = Color.BLACK; style = Paint.Style.STROKE; strokeWidth = 2f
+        pathEffect = DashPathEffect(floatArrayOf(5f, 5f), 0f)
+    }
+    private val waypointPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.BLACK; style = Paint.Style.FILL
     }
     private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#CED4DA"); style = Paint.Style.STROKE; strokeWidth = 1f
@@ -135,6 +143,9 @@ class MapView @JvmOverloads constructor(
         }
         coveragePaths.forEach { cp -> 
             cp.waypoints.forEach { points.add(Pt(it.x.toFloat(), it.y.toFloat())) }
+        }
+        headlandCorners.forEach { corners ->
+            corners.forEach { points.add(it) }
         }
 
         // If no robot tag and no map/path data, don't just exit, show message or empty state if needed
@@ -329,7 +340,13 @@ class MapView @JvmOverloads constructor(
                 if (p1.kind == "work_start" || p1.kind == "work_end") workPathPaint else turnPathPaint
             } else paint!!
             canvas.drawLine(sx(p1.y.toFloat()), sy(p1.x.toFloat()), sx(p2.y.toFloat()), sy(p2.x.toFloat()), currentPaint)
+            canvas.drawCircle(sx(p1.y.toFloat()), sy(p1.x.toFloat()), 5f, waypointPaint)
         }
+        if (wpts.isNotEmpty()) {
+            val last = wpts.last()
+            canvas.drawCircle(sx(last.y.toFloat()), sy(last.x.toFloat()), 5f, waypointPaint)
+        }
+
         val start = wpts.first(); val end = wpts.last()
         val startX = sx(start.y.toFloat()); val startY = sy(start.x.toFloat())
         val endX = sx(end.y.toFloat()); val endY = sy(end.x.toFloat())

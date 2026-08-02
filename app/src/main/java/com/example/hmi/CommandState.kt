@@ -118,20 +118,23 @@ object CommandState {
      * - RUN can only be requested from ALIGN.
      * - Moving "down" (e.g., RUN -> ALIGN or RUN/ALIGN -> STOP/KEY/CAL) is always allowed.
      */
-    fun isTransitionAllowed(toBits: Int): Boolean {
+    fun getTransitionError(toBits: Int): String? {
         val from = currentState
         return when (toBits) {
-            BIT_STOP, BIT_KEY, BIT_CAL -> true // Always allowed (flexible group or down-transition)
+            BIT_STOP, BIT_KEY, BIT_CAL -> null
             BIT_ALIGN -> {
-                // Requires calibration complete AND path selected
-                (from == "STOP" || from == "KEY" || from == "CAL" || from == "CALI" || from == "ALIGN") &&
-                        isCalibrationComplete && isPathSelected
+                if (!isCalibrationComplete) "Calibration(CAL) is required before ALIGN."
+                else if (!isPathSelected) "A coverage path must be selected before ALIGN."
+                else if (!(from == "STOP" || from == "KEY" || from == "CAL" || from == "CALI" || from == "ALIGN")) "Cannot enter ALIGN from $from."
+                else null
             }
             BIT_RUN -> {
-                // Can only enter from ALIGN
-                from == "ALIGN" || from == "RUN"
+                if (from != "ALIGN" && from != "RUN") "RUN can only be started from ALIGN state."
+                else null
             }
-            else -> false
+            else -> "Invalid state transition."
         }
     }
+
+    fun isTransitionAllowed(toBits: Int): Boolean = getTransitionError(toBits) == null
 }

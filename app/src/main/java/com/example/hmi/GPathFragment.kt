@@ -1,6 +1,7 @@
 package com.example.hmi
 
 import android.graphics.Color
+import android.graphics.Typeface
 import android.os.Bundle
 import android.util.Log
 import android.util.TypedValue
@@ -196,8 +197,21 @@ class GPathFragment : Fragment() {
                 setPadding(0, 0, 0, 8)
             }
             
+            // Selection Indicator
+            val isSelected = CommandState.selectedCoveragePath == path
+            if (isSelected) {
+                val selectedMark = TextView(requireContext()).apply {
+                    text = "✓ SELECTED"; setTextColor(Color.RED); textSize = 14f; setTypeface(null, Typeface.BOLD)
+                    gravity = android.view.Gravity.END
+                }
+                card.addView(selectedMark)
+                card.setBackgroundColor(Color.parseColor("#FFF1F1")) // Very light red
+            }
+            
             val info = TextView(requireContext()).apply {
-                text = "${path.nRidges} ridges, Work Length: ${path.workLen.toInt()}m"; textSize = 14f
+                val totalLen = path.nRidges * path.workLen
+                text = "${path.nRidges} ridges, Work: ${path.workLen.toInt()}m, Total: ${totalLen.toInt()}m"
+                textSize = 14f
                 setPadding(0, 0, 0, 16)
             }
 

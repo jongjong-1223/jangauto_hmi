@@ -143,18 +143,29 @@ class ControlFragment : Fragment() {
     }
 
     private fun requestState(bits: Int) {
-        if (CommandState.isTransitionAllowed(bits)) {
+        val error = CommandState.getTransitionError(bits)
+        if (error == null) {
             CommandState.requestedSwBits = bits
             CommandState.lastRequestTime = System.currentTimeMillis()
             syncUi()
         } else {
-            val from = CommandState.currentState
-            val to = CommandState.bitsToStateName(bits)
-            Toast.makeText(context, "Cannot transition from $from to $to", Toast.LENGTH_SHORT).show()
+            androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle("Command Gated")
+                .setMessage(error)
+                .setPositiveButton("Confirm", null)
+                .show()
         }
     }
 
     private fun sendMoveCommand() {
+        if (!CommandState.isCalibrationComplete) {
+            androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle("Command Gated")
+                .setMessage("Calibration(CAL) is required before MOVE.")
+                .setPositiveButton("Confirm", null)
+                .show()
+            return
+        }
         val x = etTargetX.text.toString().toDoubleOrNull() ?: 0.0
         val y = etTargetY.text.toString().toDoubleOrNull() ?: 0.0
         SocketManager.send(MoveRequest(msgId = SocketManager.generateId(), x = x, y = y))
@@ -192,21 +203,35 @@ class ControlFragment : Fragment() {
         tvPathStatus.text = if (isPathOk) "Coverage: READY" else "Coverage: NOT SELECTED"
         tvPathStatus.setTextColor(if (isPathOk) Color.parseColor("#2E7D32") else Color.RED)
 
+        val blue = Color.parseColor("#005EB8")
+        val gray = Color.parseColor("#BDBDBD")
+
         val btnMove = view?.findViewById<Button>(R.id.btnMove)
-        btnMove?.isEnabled = isCalOk
+        btnMove?.setBackgroundColor(if (isCalOk) blue else gray)
+        btnMove?.setTextColor(Color.WHITE)
         
-        val btnAlign = view?.findViewById<Button>(R.id.btnAlign)
-        btnAlign?.isEnabled = isCalOk && isPathOk
-        
-        val btnRun = view?.findViewById<Button>(R.id.btnRun)
-        btnRun?.isEnabled = state == "ALIGN"
-        
-        val buttons = mapOf(R.id.btnStop to "STOP", R.id.btnKey to "KEY", R.id.btnCali to "CAL", R.id.btnAlign to "ALIGN", R.id.btnRun to "RUN")
-        buttons.forEach { (id, name) ->
+        val buttons = mapOf(
+            R.id.btnStop to CommandState.BIT_STOP, 
+            R.id.btnKey to CommandState.BIT_KEY, 
+            R.id.btnCali to CommandState.BIT_CAL, 
+            R.id.btnAlign to CommandState.BIT_ALIGN, 
+            R.id.btnRun to CommandState.BIT_RUN
+        )
+        buttons.forEach { (id, bit) ->
             view?.findViewById<Button>(id)?.apply {
-                val active = (state == name || (name == "CAL" && state == "CALI"))
-                setBackgroundColor(if (active) Color.parseColor("#4CAF50") else Color.parseColor("#E0E0E0"))
-                setTextColor(if (active) Color.WHITE else Color.BLACK)
+                val name = CommandState.bitsToStateName(bit)
+                val isCurrentlyActive = (state == name || (name == "CAL" && state == "CALI"))
+                val allowed = CommandState.isTransitionAllowed(bit)
+                
+                setBackgroundColor(if (allowed) blue else gray)
+                setTextColor(Color.WHITE)
+                
+                // Show current state with an icon
+                if (isCurrentlyActive) {
+                    setCompoundDrawablesWithIntrinsicBounds(0, 0, android.R.drawable.presence_online, 0)
+                } else {
+                    setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0)
+                }
             }
         }
 
