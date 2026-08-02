@@ -50,8 +50,8 @@ class MapView @JvmOverloads constructor(
         pathEffect = DashPathEffect(floatArrayOf(10f, 10f), 0f)
     }
     private val historyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.BLACK; style = Paint.Style.STROKE; strokeWidth = 2f
-        pathEffect = DashPathEffect(floatArrayOf(5f, 5f), 0f)
+        color = Color.RED; style = Paint.Style.STROKE; strokeWidth = 6f
+        pathEffect = DashPathEffect(floatArrayOf(20f, 20f), 0f)
     }
     private val waypointPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.BLACK; style = Paint.Style.FILL
@@ -84,7 +84,7 @@ class MapView @JvmOverloads constructor(
         color = Color.parseColor("#F44336"); style = Paint.Style.FILL // Red
     }
     private val headlandPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#80FF9800"); style = Paint.Style.FILL // Translucent Orange (Material Orange 500 with 50% Alpha)
+        color = Color.parseColor("#A0FF9800"); style = Paint.Style.FILL // Increased alpha slightly (0xA0)
     }
     private val startTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#4CAF50"); textSize = 32f; typeface = Typeface.DEFAULT_BOLD
@@ -340,11 +340,11 @@ class MapView @JvmOverloads constructor(
                 if (p1.kind == "work_start" || p1.kind == "work_end") workPathPaint else turnPathPaint
             } else paint!!
             canvas.drawLine(sx(p1.y.toFloat()), sy(p1.x.toFloat()), sx(p2.y.toFloat()), sy(p2.x.toFloat()), currentPaint)
-            canvas.drawCircle(sx(p1.y.toFloat()), sy(p1.x.toFloat()), 5f, waypointPaint)
+            canvas.drawCircle(sx(p1.y.toFloat()), sy(p1.x.toFloat()), 12f, waypointPaint)
         }
         if (wpts.isNotEmpty()) {
             val last = wpts.last()
-            canvas.drawCircle(sx(last.y.toFloat()), sy(last.x.toFloat()), 5f, waypointPaint)
+            canvas.drawCircle(sx(last.y.toFloat()), sy(last.x.toFloat()), 12f, waypointPaint)
         }
 
         val start = wpts.first(); val end = wpts.last()

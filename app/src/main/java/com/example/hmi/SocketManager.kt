@@ -235,6 +235,14 @@ object SocketManager {
                 val result = gson.fromJson(text, CoveragePathResult::class.java)
                 AppLogger.rx("Coverage Path Result Received [ID: ${result.msgId}]")
                 
+                result.headlandCorners?.let { corners ->
+                    AppLogger.log("Headland Corners received: ${corners.size} areas")
+                    corners.forEachIndexed { i, area ->
+                        val pts = area.joinToString(", ") { "(${it.x}, ${it.y})" }
+                        AppLogger.log("  Area $i: $pts")
+                    }
+                }
+                
                 CommandState.lastGeneratedPaths = result.paths
                 CommandState.lastHeadlandCorners = result.headlandCorners
                 CommandState.lastResultMsgId = result.msgId

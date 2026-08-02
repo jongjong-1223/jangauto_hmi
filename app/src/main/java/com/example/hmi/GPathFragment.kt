@@ -245,6 +245,11 @@ class GPathFragment : Fragment() {
         
         // Update local selection for UI reflection across screens
         CommandState.selectedCoveragePath = CommandState.lastGeneratedPaths?.getOrNull(index)
+        
+        // Refresh UI immediately to show the checkmark
+        activity?.runOnUiThread {
+            CommandState.lastGeneratedPaths?.let { showCandidates(it) }
+        }
 
         SocketManager.send(SelectCoveragePathRequest(
             msgId = newMsgId,
