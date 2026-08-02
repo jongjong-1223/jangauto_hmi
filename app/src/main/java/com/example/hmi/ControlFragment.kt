@@ -219,19 +219,10 @@ class ControlFragment : Fragment() {
         )
         buttons.forEach { (id, bit) ->
             view?.findViewById<Button>(id)?.apply {
-                val name = CommandState.bitsToStateName(bit)
-                val isCurrentlyActive = (state == name || (name == "CAL" && state == "CALI"))
                 val allowed = CommandState.isTransitionAllowed(bit)
                 
                 setBackgroundColor(if (allowed) blue else gray)
                 setTextColor(Color.WHITE)
-                
-                // Show current state with an icon
-                if (isCurrentlyActive) {
-                    setCompoundDrawablesWithIntrinsicBounds(0, 0, android.R.drawable.presence_online, 0)
-                } else {
-                    setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0)
-                }
             }
         }
 
