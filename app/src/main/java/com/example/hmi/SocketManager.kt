@@ -236,6 +236,7 @@ object SocketManager {
                 AppLogger.rx("Coverage Path Result Received [ID: ${result.msgId}]")
                 
                 CommandState.lastGeneratedPaths = result.paths
+                CommandState.lastHeadlandCorners = result.headlandCorners
                 CommandState.lastResultMsgId = result.msgId
                 
                 // Send Ack to robot

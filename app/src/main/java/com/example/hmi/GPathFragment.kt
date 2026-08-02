@@ -192,7 +192,7 @@ class GPathFragment : Fragment() {
             }
 
             val title = TextView(requireContext()).apply {
-                text = "Candidate Path ${i + 1} (${path.startSide})"; textSize = 16f; setTextColor(context.getColor(R.color.uos_blue))
+                text = "Path ${i + 1}"; textSize = 16f; setTextColor(context.getColor(R.color.uos_blue))
                 setPadding(0, 0, 0, 8)
             }
             
@@ -208,6 +208,7 @@ class GPathFragment : Fragment() {
                 setMapData(currentMap?.map?.map { MapView.Pt(it.x.toFloat(), it.y.toFloat()) } ?: emptyList(),
                            currentMap?.obstacles?.map { o -> o.map { MapView.Pt(it.x.toFloat(), it.y.toFloat()) } } ?: emptyList(),
                            emptyList())
+                setHeadlandCorners(CommandState.lastHeadlandCorners?.map { list -> list.map { MapView.Pt(it.x.toFloat(), it.y.toFloat()) } } ?: emptyList())
                 setSingleCoveragePath(path)
             }
 

@@ -79,7 +79,8 @@ data class GenerateCoveragePathRequest(
 data class CoveragePathResult(
     @SerializedName("type") val type: String = "coverage_path_result",
     @SerializedName("msg_id") val msgId: String,
-    @SerializedName("paths") val paths: List<CoveragePath>
+    @SerializedName("paths") val paths: List<CoveragePath>,
+    @SerializedName("headland_corners") val headlandCorners: List<List<Point>>? = null
 )
 
 data class CoveragePath(

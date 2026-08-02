@@ -15,6 +15,7 @@ class MapView @JvmOverloads constructor(
 
     private var mapPoints: List<Pt> = emptyList()
     private var obstacles: List<List<Pt>> = emptyList()
+    private var headlandCorners: List<List<Pt>> = emptyList()
     private var path: List<Pt> = emptyList()
     private var coveragePaths: List<com.example.hmi.model.CoveragePath> = emptyList()
     private var selectedPathIndex: Int = -1
@@ -40,14 +41,12 @@ class MapView @JvmOverloads constructor(
     }
     private val turnPathPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#81C784"); style = Paint.Style.STROKE; strokeWidth = 4f
-        pathEffect = DashPathEffect(floatArrayOf(10f, 5f), 0f)
     }
     private val candidatePathPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#BDBDBD"); style = Paint.Style.STROKE; strokeWidth = 3f
     }
     private val historyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#D32F2F"); style = Paint.Style.STROKE; strokeWidth = 2f
-        pathEffect = DashPathEffect(floatArrayOf(8f, 8f), 0f)
     }
     private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#CED4DA"); style = Paint.Style.STROKE; strokeWidth = 1f
@@ -77,7 +76,7 @@ class MapView @JvmOverloads constructor(
         color = Color.parseColor("#F44336"); style = Paint.Style.FILL // Red
     }
     private val headlandPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#20FFEB3B"); style = Paint.Style.FILL // Very translucent Yellow
+        color = Color.parseColor("#80FF9800"); style = Paint.Style.FILL // Translucent Orange (Material Orange 500 with 50% Alpha)
     }
     private val startTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#4CAF50"); textSize = 32f; typeface = Typeface.DEFAULT_BOLD
@@ -93,6 +92,11 @@ class MapView @JvmOverloads constructor(
         this.mapPoints = mapPoints
         this.obstacles = obstacles
         this.path = path
+        invalidate()
+    }
+
+    fun setHeadlandCorners(corners: List<List<Pt>>) {
+        this.headlandCorners = corners
         invalidate()
     }
 
@@ -173,6 +177,8 @@ class MapView @JvmOverloads constructor(
         // 2. Draw Layers
         val currentStep = getGridStep(minX, maxX, minY, maxY)
         drawGrids(canvas, minX, maxX, minY, maxY, currentStep, ::sx, ::sy)
+
+        drawHeadlands(canvas, ::sx, ::sy)
 
         if (history.size >= 2) {
             trailPath.reset()
@@ -288,6 +294,20 @@ class MapView @JvmOverloads constructor(
         }
     }
 
+    private fun drawHeadlands(canvas: Canvas, sx: (Float) -> Float, sy: (Float) -> Float) {
+        val polyPath = Path()
+        for (cornerSet in headlandCorners) {
+            if (cornerSet.size < 3) continue
+            polyPath.reset()
+            polyPath.moveTo(sx(cornerSet[0].y), sy(cornerSet[0].x))
+            for (i in 1 until cornerSet.size) {
+                polyPath.lineTo(sx(cornerSet[i].y), sy(cornerSet[i].x))
+            }
+            polyPath.close()
+            canvas.drawPath(polyPath, headlandPaint)
+        }
+    }
+
     private fun drawCoveragePaths(canvas: Canvas, sx: (Float) -> Float, sy: (Float) -> Float) {
         coveragePaths.forEachIndexed { index, covPath ->
             renderPathWithDetails(canvas, covPath, index == selectedPathIndex, sx, sy)
@@ -309,9 +329,6 @@ class MapView @JvmOverloads constructor(
                 if (p1.kind == "work_start" || p1.kind == "work_end") workPathPaint else turnPathPaint
             } else paint!!
             canvas.drawLine(sx(p1.y.toFloat()), sy(p1.x.toFloat()), sx(p2.y.toFloat()), sy(p2.x.toFloat()), currentPaint)
-            if (isHighlighted && (p1.kind == "turn_out" || p1.kind == "turn_in")) {
-                canvas.drawCircle(sx(p1.y.toFloat()), sy(p1.x.toFloat()), 25f, headlandPaint)
-            }
         }
         val start = wpts.first(); val end = wpts.last()
         val startX = sx(start.y.toFloat()); val startY = sy(start.x.toFloat())

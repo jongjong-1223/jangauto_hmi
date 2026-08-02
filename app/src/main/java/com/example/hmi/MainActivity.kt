@@ -69,6 +69,7 @@ class MainActivity : AppCompatActivity() {
                     history = CommandState.getHistory(),
                     hasTag = true
                 )
+                mapFullInDialog?.setHeadlandCorners(CommandState.lastHeadlandCorners?.map { list -> list.map { MapView.Pt(it.x.toFloat(), it.y.toFloat()) } } ?: emptyList())
                 mapFullInDialog?.setSingleCoveragePath(CommandState.selectedCoveragePath)
             }
         }
@@ -148,6 +149,9 @@ class MainActivity : AppCompatActivity() {
             val pts = data.map?.map { MapView.Pt(it.x.toFloat(), it.y.toFloat()) } ?: emptyList()
             val obs = data.obstacles?.map { o -> o.map { MapView.Pt(it.x.toFloat(), it.y.toFloat()) } } ?: emptyList()
             mapFullInDialog?.setMapData(pts, obs, emptyList())
+        }
+        CommandState.lastHeadlandCorners?.let { corners ->
+            mapFullInDialog?.setHeadlandCorners(corners.map { list -> list.map { MapView.Pt(it.x.toFloat(), it.y.toFloat()) } })
         }
 
         AlertDialog.Builder(this).setView(view).setOnDismissListener { mapFullInDialog = null }.show()

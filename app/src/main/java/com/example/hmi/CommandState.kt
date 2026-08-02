@@ -33,6 +33,7 @@ object CommandState {
 
     @Volatile var lastMapData: com.example.hmi.model.MapData? = null
     @Volatile var lastGeneratedPaths: List<com.example.hmi.model.CoveragePath>? = null
+    @Volatile var lastHeadlandCorners: List<List<com.example.hmi.model.Point>>? = null
     @Volatile var selectedCoveragePath: com.example.hmi.model.CoveragePath? = null
     @Volatile var lastResultMsgId: String? = null
 
@@ -92,6 +93,7 @@ object CommandState {
         errorReason = ""
         lastMapData = null
         lastGeneratedPaths = null
+        lastHeadlandCorners = null
         selectedCoveragePath = null
         lastResultMsgId = null
         clearHistory()
@@ -120,8 +122,15 @@ object CommandState {
         val from = currentState
         return when (toBits) {
             BIT_STOP, BIT_KEY, BIT_CAL -> true // Always allowed (flexible group or down-transition)
-            BIT_ALIGN -> from == "STOP" || from == "KEY" || from == "CAL" || from == "CALI" || from == "ALIGN"
-            BIT_RUN -> from == "ALIGN" || from == "RUN"
+            BIT_ALIGN -> {
+                // Requires calibration complete AND path selected
+                (from == "STOP" || from == "KEY" || from == "CAL" || from == "CALI" || from == "ALIGN") &&
+                        isCalibrationComplete && isPathSelected
+            }
+            BIT_RUN -> {
+                // Can only enter from ALIGN
+                from == "ALIGN" || from == "RUN"
+            }
             else -> false
         }
     }

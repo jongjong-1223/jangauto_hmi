@@ -114,6 +114,7 @@ class ControlFragment : Fragment() {
         val tag = MapView.Pt(tx, ty)
         
         mapZoom.setSingleCoveragePath(CommandState.selectedCoveragePath)
+        mapZoom.setHeadlandCorners(CommandState.lastHeadlandCorners?.map { list -> list.map { MapView.Pt(it.x.toFloat(), it.y.toFloat()) } } ?: emptyList())
         
         mapZoom.setRobotState(
             tag, 
@@ -194,9 +195,11 @@ class ControlFragment : Fragment() {
         val btnMove = view?.findViewById<Button>(R.id.btnMove)
         btnMove?.isEnabled = isCalOk
         
-        val isPathReady = CommandState.isPathSelected
+        val btnAlign = view?.findViewById<Button>(R.id.btnAlign)
+        btnAlign?.isEnabled = isCalOk && isPathOk
+        
         val btnRun = view?.findViewById<Button>(R.id.btnRun)
-        btnRun?.isEnabled = isPathReady
+        btnRun?.isEnabled = state == "ALIGN"
         
         val buttons = mapOf(R.id.btnStop to "STOP", R.id.btnKey to "KEY", R.id.btnCali to "CAL", R.id.btnAlign to "ALIGN", R.id.btnRun to "RUN")
         buttons.forEach { (id, name) ->
