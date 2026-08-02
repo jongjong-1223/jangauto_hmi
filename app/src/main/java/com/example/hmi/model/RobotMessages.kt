@@ -79,16 +79,17 @@ data class GenerateCoveragePathRequest(
 data class CoveragePathResult(
     @SerializedName("type") val type: String = "coverage_path_result",
     @SerializedName("msg_id") val msgId: String,
-    @SerializedName("paths") val paths: List<CoveragePath>,
-    @SerializedName("headland_corners") val headlandCorners: List<List<Point>>? = null
+    @SerializedName("paths") val paths: List<CoveragePath>
 )
 
 data class CoveragePath(
-    @SerializedName("start_side") val startSide: String, // "left" or "right"
+    @SerializedName("first_row_side") val firstRowSide: String, // "near" or "far"
     @SerializedName("rect_length") val rectLength: Double,
     @SerializedName("rect_width") val rectWidth: Double,
     @SerializedName("work_len") val workLen: Double,
     @SerializedName("n_ridges") val nRidges: Int,
+    @SerializedName("start_headland_corners") val startHeadlandCorners: List<Point>? = null,
+    @SerializedName("far_headland_corners") val farHeadlandCorners: List<Point>? = null,
     @SerializedName("waypoints") val waypoints: List<Waypoint>
 )
 

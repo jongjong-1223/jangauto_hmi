@@ -167,6 +167,7 @@ object SocketManager {
     private fun processRobotMessage(text: String) {
         try {
             val json = org.json.JSONObject(text)
+            val type = json.optString("type")
 
             // Msg ID check for Retry removal
             if (json.has("msg_id")) {
@@ -186,7 +187,7 @@ object SocketManager {
                 }}
 
                 if (CommandState.currentState != status.state || CommandState.inError != status.inError) {
-                    AppLogger.rx("Current State from Robot: ${status.state}, Error=${status.inError}")
+                    AppLogger.rx("State: ${status.state}, Error=${status.inError}")
                     // Clear velocity history if transitioning to CAL
                     if (status.state.uppercase() == "CAL" || status.state.uppercase() == "CALI") {
                         CommandState.clearVelocityHistory()
@@ -197,7 +198,7 @@ object SocketManager {
                 val wasCalComplete = CommandState.isCalibrationComplete
                 val isNowCalComplete = status.calibrationComplete ?: false
                 if (!wasCalComplete && isNowCalComplete) {
-                    AppLogger.log("Calibration Completed! Resetting graph data.")
+                    AppLogger.log("Calibration Completed!")
                     CommandState.clearVelocityHistory()
                 }
                 
@@ -215,11 +216,13 @@ object SocketManager {
                 synchronized(robotStatusListeners) {
                     robotStatusListeners.forEach { it.invoke(status) }
                 }
+                return
             }
 
             // 3. Map Data (Reliable - Requires App Ack)
-            if (json.optString("type") == "map_data") {
+            if (type == "map_data") {
                 val mapData = gson.fromJson(text, MapData::class.java)
+                AppLogger.rx("Map Data Received (Obs: ${mapData.obstacles?.size}, Map: ${mapData.map?.size})")
                 CommandState.lastMapData = mapData
 
                 // Send Ack to robot
@@ -228,23 +231,32 @@ object SocketManager {
                 synchronized(mapDataListeners) {
                     mapDataListeners.forEach { it.invoke(mapData) }
                 }
+                return
             }
 
             // 4. Coverage Path Result (Reliable - Requires App Ack or Selection)
-            if (json.optString("type") == "coverage_path_result") {
+            if (type == "coverage_path_result") {
                 val result = gson.fromJson(text, CoveragePathResult::class.java)
-                AppLogger.rx("Coverage Path Result Received [ID: ${result.msgId}]")
+                AppLogger.rx("Path Result [ID: ${result.msgId}]")
                 
-                result.headlandCorners?.let { corners ->
-                    AppLogger.log("Headland Corners received: ${corners.size} areas")
+                // Extract headland corners from the first path (they are the same for both candidates)
+                val firstPath = result.paths.firstOrNull()
+                val corners = mutableListOf<List<Point>>()
+                firstPath?.startHeadlandCorners?.let { corners.add(it) }
+                firstPath?.farHeadlandCorners?.let { corners.add(it) }
+
+                if (corners.isNotEmpty()) {
+                    AppLogger.log("Headlands: ${corners.size} areas")
                     corners.forEachIndexed { i, area ->
                         val pts = area.joinToString(", ") { "(${it.x}, ${it.y})" }
-                        AppLogger.log("  Area $i: $pts")
+                        AppLogger.log("  A$i: $pts")
                     }
+                } else {
+                    AppLogger.log("Headlands: NONE found in paths")
                 }
                 
                 CommandState.lastGeneratedPaths = result.paths
-                CommandState.lastHeadlandCorners = result.headlandCorners
+                CommandState.lastHeadlandCorners = if (corners.isEmpty()) null else corners
                 CommandState.lastResultMsgId = result.msgId
                 
                 // Send Ack to robot
@@ -253,16 +265,26 @@ object SocketManager {
                 synchronized(coveragePathListeners) {
                     coveragePathListeners.forEach { it.invoke(result) }
                 }
+                return
             }
 
             // 5. Move Ack
-            if (json.optString("type") == "move_ack") {
+            if (type == "move_ack") {
                 val ack = gson.fromJson(text, MoveAck::class.java)
-                AppLogger.rx("Move Ack: Accepted=${ack.accepted}")
+                AppLogger.rx("Move Ack: ${ack.accepted}")
                 feedbackListener?.invoke(if (ack.accepted) "MOVE_SUCCESS" else "MOVE_FAILED: ${ack.reason}")
+                return
             }
 
-        } catch (e: Exception) { /* Parsing other data */ }
+            // Generic Log for unknown but structured messages
+            if (type.isNotEmpty()) {
+                AppLogger.log("Unknown Msg Type: $type")
+            }
+
+        } catch (e: Exception) {
+            AppLogger.log("Error parsing message: ${e.message}")
+            Log.e(TAG, "Parsing error", e)
+        }
     }
 
     /**
